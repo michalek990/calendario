@@ -1,14 +1,16 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import * as authApi from '../api/auth'
 import type { LoginPayload, RegisterPayload } from '../api/types'
-import { decodeJwtPayload, isJwtExpired } from './jwt'
+import { decodeJwtPayload, isJwtExpired, type Role } from './jwt'
 
 const TOKEN_STORAGE_KEY = 'calendario.token'
 
 interface AuthContextValue {
   token: string | null
   email: string | null
+  role: Role | null
   isAuthenticated: boolean
+  hasAnyRole: (...roles: Role[]) => boolean
   login: (payload: LoginPayload) => Promise<void>
   register: (payload: RegisterPayload) => Promise<void>
   logout: () => void
@@ -50,12 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
   }
 
-  const email = useMemo(() => (token ? decodeJwtPayload(token)?.sub ?? null : null), [token])
+  const payload = useMemo(() => (token ? decodeJwtPayload(token) : null), [token])
+  const email = payload?.sub ?? null
+  const role = payload?.role ?? null
+
+  const hasAnyRole = (...roles: Role[]) => role !== null && roles.includes(role)
 
   const value: AuthContextValue = {
     token,
     email,
+    role,
     isAuthenticated: token !== null,
+    hasAnyRole,
     login,
     register,
     logout,

@@ -1,13 +1,13 @@
 import { useAuth } from '../auth/AuthContext'
 
 export function DashboardPage() {
-  const { email, logout } = useAuth()
+  const { email, role } = useAuth()
 
   return (
-    <div className="dashboard-page">
+    <div>
       <h1>Witaj, {email}</h1>
-      <p>Jesteś zalogowany do systemu Calendario HR.</p>
-      <button onClick={logout}>Wyloguj się</button>
+      <p>Rola: {role}</p>
+      <p>Wybierz moduł z menu powyżej — Urlopy albo Czas pracy.</p>
     </div>
   )
 }
