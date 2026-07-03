@@ -117,14 +117,52 @@ Hasła hashowane BCryptem (`BCryptPasswordHasher`), sesje bezstanowe (`STATELESS
 Sekret JWT i czas wygaśnięcia konfigurowalne przez `app.jwt.secret` /
 `app.jwt.expiration-ms` (env: `JWT_SECRET`).
 
+Wspólny port `application/common/CurrentUserProvider.java` (implementacja:
+`infrastructure/security/SecurityContextCurrentUserProvider.java`) daje use
+case'om dostęp do id/e-maila/roli aktualnie zalogowanego użytkownika bez
+zależności od Spring Security — używają go też moduły Leave i Time Tracking.
+
+## Moduł: Leave Requests (wnioski urlopowe)
+
+Tabela `leave_requests`. Typ urlopu jako enum (`VACATION`, `SICK_LEAVE`,
+`UNPAID`, `OTHER`) — bez osobnej konfigurowalnej tabeli `leave_types` na tym
+etapie (celowo odłożone, podobnie jak limity/salda urlopowe `LeaveBalance`).
+
+| Endpoint | Opis | Uprawnienia |
+|---|---|---|
+| `POST /api/leave-requests` | Tworzy wniosek (status `PENDING`) | dowolny zalogowany |
+| `GET /api/leave-requests/me` | Lista własnych wniosków | dowolny zalogowany |
+| `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` / `HR_ADMIN` |
+| `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` / `HR_ADMIN` |
+| `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` / `HR_ADMIN` |
+
+```jsonc
+// POST /api/leave-requests
+{ "type": "VACATION", "startDate": "2026-08-03", "endDate": "2026-08-07", "reason": "Wakacje" }
+// -> 201 { "id": 1, "requesterId": 5, "type": "VACATION", "startDate": "2026-08-03",
+//          "endDate": "2026-08-07", "daysCount": 5, "status": "PENDING", ... }
+```
+
+Błędy: 400 (zły zakres dat / walidacja), 403 (rola bez uprawnień do approve/reject),
+404 (brak wniosku), 409 (decyzja na wniosku, który nie jest już `PENDING`).
+Mapowane przez dedykowany `api.leave.LeaveExceptionHandler` (nie w
+`GlobalExceptionHandler`, żeby moduły mogły rozwijać się niezależnie).
+
 ## Testy
 
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `LoginUseCaseTest` |
-| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest` |
+| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest` |
+| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
-| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest` |
+| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest` |
+
+Uwaga testowa: rejestracja (`/api/auth/register`) zawsze tworzy użytkownika z
+rolą `EMPLOYEE`. Żeby przetestować ścieżki wymagające `MANAGER`/`HR_ADMIN`,
+testy integracyjne zapisują użytkownika bezpośrednio przez `UserRepository`
+(`User.reconstitute(...)`) i generują token przez `TokenProvider` — z
+pominięciem endpointu rejestracji.
 
 ## Moduły (w budowie)
 
@@ -133,5 +171,5 @@ Sekret JWT i czas wygaśnięcia konfigurowalne przez `app.jwt.secret` /
 | Bootstrap projektu | ✅ |
 | Clean Architecture (domain/application/infrastructure/api) | ✅ |
 | User + JWT auth (register/login) | ✅ |
-| Leave requests | ⏳ |
+| Leave requests | ✅ |
 | Time tracking | ⏳ |
