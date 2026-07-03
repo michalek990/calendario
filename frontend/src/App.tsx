@@ -2,6 +2,9 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { LeaveRequestsPage } from './pages/LeaveRequestsPage'
+import { PendingApprovalsPage } from './pages/PendingApprovalsPage'
+import { TimeTrackingPage } from './pages/TimeTrackingPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import './App.css'
 
@@ -16,6 +19,30 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/leave-requests"
+        element={
+          <ProtectedRoute>
+            <LeaveRequestsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/leave-requests/pending"
+        element={
+          <ProtectedRoute allowedRoles={['MANAGER', 'HR_ADMIN']}>
+            <PendingApprovalsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/time-tracking"
+        element={
+          <ProtectedRoute>
+            <TimeTrackingPage />
           </ProtectedRoute>
         }
       />

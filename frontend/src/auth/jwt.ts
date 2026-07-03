@@ -1,5 +1,8 @@
+export type Role = 'EMPLOYEE' | 'MANAGER' | 'HR_ADMIN'
+
 interface JwtPayload {
   sub?: string
+  role?: Role
   exp?: number
 }
 

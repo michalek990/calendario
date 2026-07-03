@@ -21,8 +21,8 @@ Calendario/
 | Moduł | Backend | Frontend |
 |---|---|---|
 | Users / Auth (register, login) | ✅ | ✅ (ekrany logowania/rejestracji) |
-| Leave (wnioski urlopowe) | ✅ | ⏳ |
-| Time Tracking (czas pracy) | ✅ | ⏳ |
+| Leave (wnioski urlopowe) | ✅ | ✅ (złóż wniosek, lista własnych, zatwierdź/odrzuć dla MANAGER/HR_ADMIN) |
+| Time Tracking (czas pracy) | ✅ | ✅ (clock-in/clock-out, lista własnych wpisów) |
 
 Szczegółowa dokumentacja: [backend/README.md](backend/README.md) ·
 [frontend/README.md](frontend/README.md)
