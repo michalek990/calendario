@@ -69,72 +69,68 @@ export function LeaveRequestsPage() {
     <div>
       <h1>Wnioski urlopowe</h1>
 
-      <form className="inline-form" onSubmit={handleSubmit}>
-        <label htmlFor="type">Typ</label>
-        <select id="type" value={type} onChange={(e) => setType(e.target.value as LeaveType)}>
-          {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+      <div className="centered-form-wrapper">
+        <form className="card-form" onSubmit={handleSubmit}>
+          <h2>Złóż nowy wniosek</h2>
 
-        <label htmlFor="startDate">Od</label>
-        <input
-          id="startDate"
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          required
-        />
-
-        <label htmlFor="endDate">Do</label>
-        <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-
-        <label htmlFor="reason">Powód (opcjonalnie)</label>
-        <input id="reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} />
-
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Wysyłanie…' : 'Złóż wniosek'}
-        </button>
-      </form>
-
-      {error && <p className="auth-error">{error}</p>}
-
-      {isLoading ? (
-        <p>Ładowanie…</p>
-      ) : requests.length === 0 ? (
-        <p>Nie masz jeszcze żadnych wniosków.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Typ</th>
-              <th>Od</th>
-              <th>Do</th>
-              <th>Dni</th>
-              <th>Status</th>
-              <th>Powód</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((request) => (
-              <tr key={request.id}>
-                <td>{LEAVE_TYPE_LABELS[request.type]}</td>
-                <td>{request.startDate}</td>
-                <td>{request.endDate}</td>
-                <td>{request.daysCount}</td>
-                <td>
-                  <span className={`status-badge status-${request.status.toLowerCase()}`}>
-                    {STATUS_LABELS[request.status]}
-                  </span>
-                </td>
-                <td>{request.reason ?? '—'}</td>
-              </tr>
+          <label htmlFor="type">Typ</label>
+          <select id="type" value={type} onChange={(e) => setType(e.target.value as LeaveType)}>
+            {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
-          </tbody>
-        </table>
-      )}
+          </select>
+
+          <label htmlFor="startDate">Od</label>
+          <input
+            id="startDate"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            required
+          />
+
+          <label htmlFor="endDate">Do</label>
+          <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+
+          <label htmlFor="reason">Powód (opcjonalnie)</label>
+          <input id="reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} />
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Wysyłanie…' : 'Złóż wniosek'}
+          </button>
+        </form>
+      </div>
+
+      <section className="list-section">
+        <h2>Twoje wnioski</h2>
+
+        {isLoading ? (
+          <p>Ładowanie…</p>
+        ) : requests.length === 0 ? (
+          <p>Nie masz jeszcze żadnych wniosków.</p>
+        ) : (
+          <ul className="record-list">
+            {requests.map((request) => (
+              <li key={request.id} className="record-list-item">
+                <div className="record-list-main">
+                  <strong>{LEAVE_TYPE_LABELS[request.type]}</strong>
+                  <span>
+                    {request.startDate} → {request.endDate} ({request.daysCount} dni)
+                  </span>
+                  {request.reason && <span className="record-list-reason">{request.reason}</span>}
+                </div>
+                <span className={`status-badge status-${request.status.toLowerCase()}`}>
+                  {STATUS_LABELS[request.status]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }

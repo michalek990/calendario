@@ -5,7 +5,6 @@ import { DashboardPage } from './pages/DashboardPage'
 import { LeaveRequestsPage } from './pages/LeaveRequestsPage'
 import { PendingApprovalsPage } from './pages/PendingApprovalsPage'
 import { TimeTrackingPage } from './pages/TimeTrackingPage'
-import { ProfilePage } from './pages/ProfilePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import './App.css'
@@ -45,14 +44,6 @@ function App() {
         element={
           <ProtectedRoute>
             <TimeTrackingPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
           </ProtectedRoute>
         }
       />

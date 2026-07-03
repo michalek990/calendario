@@ -97,6 +97,7 @@ Domenowy `domain.user.User` jest niemutowalny i nie ma żadnych adnotacji —
 |---|---|---|
 | `POST /api/auth/register` | Rejestruje nowego użytkownika (rola domyślna `EMPLOYEE`), zwraca JWT | Nie |
 | `POST /api/auth/login` | Loguje po email+hasło, zwraca JWT | Nie |
+| `PATCH /api/auth/change-password` | Zmienia hasło zalogowanego użytkownika | Tak |
 
 Request/response:
 ```jsonc
@@ -107,11 +108,20 @@ Request/response:
 // POST /api/auth/login
 { "email": "jan@example.com", "password": "min8znakow" }
 // -> 200 { "token": "<jwt>" }  |  401 { "message": "..." } gdy złe dane
+
+// PATCH /api/auth/change-password (wymaga Authorization: Bearer <token>)
+{ "currentPassword": "min8znakow", "newPassword": "noweMin8znakow" }
+// -> 204 (brak treści)  |  401 { "message": "..." } gdy obecne hasło błędne
 ```
 
-Wszystkie pozostałe endpointy (`/api/**` poza `/api/auth/**`) wymagają nagłówka
-`Authorization: Bearer <token>` — patrz `infrastructure/security/SecurityConfig.java`
-i `JwtAuthenticationFilter.java`.
+JWT (poza `sub` = e-mail) niesie też claimy `role`, `firstName`, `lastName` —
+frontend używa ich do pokazywania profilu i ekranów zależnych od roli bez
+dodatkowego zapytania do API.
+
+Tylko `/api/auth/register` i `/api/auth/login` są publiczne (`permitAll`);
+wszystkie pozostałe endpointy, w tym `/api/auth/change-password`, wymagają
+nagłówka `Authorization: Bearer <token>` — patrz
+`infrastructure/security/SecurityConfig.java` i `JwtAuthenticationFilter.java`.
 
 Hasła hashowane BCryptem (`BCryptPasswordHasher`), sesje bezstanowe (`STATELESS`).
 Sekret JWT i czas wygaśnięcia konfigurowalne przez `app.jwt.secret` /

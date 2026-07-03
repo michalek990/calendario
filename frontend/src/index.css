@@ -1,22 +1,35 @@
 :root {
-  --navy: #0f1f3d;
-  --navy-light: #1c3564;
-  --navy-lighter: #274277;
+  --primary: #2f6fed;
+  --primary-light: #2559c7;
+  --primary-lighter: #4a86ff;
   --white: #ffffff;
   --yellow: #ffc82c;
   --yellow-dark: #e0aa00;
 
   --text: #14213d;
   --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-muted: #f0eff5;
   --border: #dde2ee;
-  --accent: var(--navy);
-  --accent-hover: var(--navy-light);
+  --accent: var(--primary);
+  --accent-hover: var(--primary-light);
   --error: #c0392b;
 
-  font: 16px/150% system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  line-height: 150%;
   color: var(--text);
   background: var(--bg);
   color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --text: #e7ebf5;
+  --bg: #0b1220;
+  --surface: #16213a;
+  --surface-muted: #1f2c48;
+  --border: #2a3654;
+  color-scheme: dark;
 }
 
 * {
@@ -33,12 +46,12 @@ body {
 
 button {
   font-family: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
   cursor: pointer;
 }
 
 input,
 select {
   font-family: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }

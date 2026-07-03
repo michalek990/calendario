@@ -38,8 +38,8 @@ export function postJson<TResponse>(path: string, body?: unknown, token?: string
   return request<TResponse>('POST', path, body, token)
 }
 
-export function patchJson<TResponse>(path: string, token?: string): Promise<TResponse> {
-  return request<TResponse>('PATCH', path, undefined, token)
+export function patchJson<TResponse>(path: string, body?: unknown, token?: string): Promise<TResponse> {
+  return request<TResponse>('PATCH', path, body, token)
 }
 
 async function extractErrorMessage(response: Response): Promise<string> {
