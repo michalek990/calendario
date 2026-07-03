@@ -26,3 +26,26 @@ Calendario/
 
 Szczegółowa dokumentacja: [backend/README.md](backend/README.md) ·
 [frontend/README.md](frontend/README.md)
+
+## Uruchomienie przez Docker Compose
+
+Cały stack (PostgreSQL + backend + frontend) jedną komendą:
+
+```bash
+docker compose up -d --build
+```
+
+| Serwis | Adres | Uwagi |
+|---|---|---|
+| frontend (nginx) | http://localhost:3000 | serwuje SPA, proxuje `/api/**` do backendu |
+| backend | http://localhost:8080 | Spring Boot API |
+| postgres | localhost:5432 | baza `hrnest`, user/hasło `hrnest`/`hrnest` (tylko dev) |
+
+Backend startuje z `spring.jpa.hibernate.ddl-auto=update` (nadpisane przez
+zmienną środowiskową w `docker-compose.yml`), więc schemat tabel tworzy się
+automatycznie przy pierwszym starcie — bez ręcznych migracji. `JWT_SECRET`
+można nadpisać zmienną środowiskową hosta przed odpaleniem; domyślny sekret
+jest tylko na potrzeby dev/testów.
+
+Zatrzymanie: `docker compose down` (dodaj `-v`, żeby usunąć też wolumen z
+danymi Postgresa).
