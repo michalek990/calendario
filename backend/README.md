@@ -32,16 +32,36 @@ backend/
 │   └── HrnestApplication.java       # main class
 ├── src/main/resources/
 │   └── application.properties       # config produkcyjny/dev (PostgreSQL)
+├── src/main/java/com/calendario/hrnest/user/
+│   ├── Role.java                     # enum: EMPLOYEE, MANAGER, HR_ADMIN
+│   ├── User.java                     # encja JPA (tabela `users`)
+│   └── UserRepository.java           # Spring Data repository
 └── src/test/resources/
     └── application.properties       # config testowy (H2 in-memory)
 ```
+
+## Encje
+
+### User (`users`)
+
+| Pole | Typ | Uwagi |
+|---|---|---|
+| id | Long | PK, auto-increment |
+| email | String | unique, not null |
+| passwordHash | String | not null (hasło haszowane przez BCrypt w kolejnym kroku) |
+| firstName / lastName | String | not null |
+| role | Role (enum) | EMPLOYEE / MANAGER / HR_ADMIN |
+| createdAt | Instant | ustawiane automatycznie w `@PrePersist` |
+
+`UserRepository.findByEmail(String)` i `existsByEmail(String)` — używane przez
+przyszły moduł autoryzacji (rejestracja/logowanie).
 
 ## Moduły (w budowie)
 
 | Moduł | Status |
 |---|---|
 | Bootstrap projektu | ✅ |
-| User entity + repository | 🔜 |
+| User entity + repository | ✅ |
 | JWT auth (register/login) | 🔜 |
 | Leave requests | ⏳ |
 | Time tracking | ⏳ |
