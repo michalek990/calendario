@@ -18,10 +18,11 @@ Calendario/
 
 ## Moduły
 
-| Moduł | Opis |
-|---|---|
-| Users | Użytkownicy, role, działy |
-| Leave | Wnioski urlopowe, salda urlopowe |
-| Time Tracking | Rejestracja czasu pracy, raporty |
+| Moduł | Backend | Frontend |
+|---|---|---|
+| Users / Auth (register, login) | ✅ | ✅ (ekrany logowania/rejestracji) |
+| Leave (wnioski urlopowe) | ✅ | ⏳ |
+| Time Tracking (czas pracy) | ✅ | ⏳ |
 
-Szczegółowa dokumentacja backendu: [backend/README.md](backend/README.md)
+Szczegółowa dokumentacja: [backend/README.md](backend/README.md) ·
+[frontend/README.md](frontend/README.md)
