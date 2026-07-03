@@ -67,6 +67,22 @@ class JwtTokenProviderTest {
         assertThat(role).isEqualTo("MANAGER");
     }
 
+    @Test
+    void generateToken_includesFirstAndLastNameClaims() {
+        User user = User.reconstitute(1L, "jan@example.com", "hashed", "Jan", "Kowalski", Role.EMPLOYEE, Instant.now());
+
+        String token = tokenProvider.generateToken(user);
+
+        var claims = Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(SECRET.getBytes()))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertThat(claims.get("firstName", String.class)).isEqualTo("Jan");
+        assertThat(claims.get("lastName", String.class)).isEqualTo("Kowalski");
+    }
+
     private User user(String email) {
         return User.reconstitute(1L, email, "hashed", "Jan", "Kowalski", Role.EMPLOYEE, Instant.now());
     }

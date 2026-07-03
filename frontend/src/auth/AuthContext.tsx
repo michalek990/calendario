@@ -9,6 +9,8 @@ interface AuthContextValue {
   token: string | null
   email: string | null
   role: Role | null
+  firstName: string | null
+  lastName: string | null
   isAuthenticated: boolean
   hasAnyRole: (...roles: Role[]) => boolean
   login: (payload: LoginPayload) => Promise<void>
@@ -55,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const payload = useMemo(() => (token ? decodeJwtPayload(token) : null), [token])
   const email = payload?.sub ?? null
   const role = payload?.role ?? null
+  const firstName = payload?.firstName ?? null
+  const lastName = payload?.lastName ?? null
 
   const hasAnyRole = (...roles: Role[]) => role !== null && roles.includes(role)
 
@@ -62,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token,
     email,
     role,
+    firstName,
+    lastName,
     isAuthenticated: token !== null,
     hasAnyRole,
     login,

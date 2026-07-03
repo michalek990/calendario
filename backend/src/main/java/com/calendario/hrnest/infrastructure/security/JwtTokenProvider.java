@@ -31,6 +31,8 @@ public class JwtTokenProvider implements TokenProvider {
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("role", user.getRole().name())
+                .claim("firstName", user.getFirstName())
+                .claim("lastName", user.getLastName())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(signingKey)

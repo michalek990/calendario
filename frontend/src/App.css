@@ -4,6 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
+  background: var(--navy);
 }
 
 .auth-form {
@@ -13,7 +14,7 @@
   flex-direction: column;
   gap: 8px;
   background: #fff;
-  border: 1px solid var(--border);
+  border-top: 4px solid var(--yellow);
   border-radius: 12px;
   padding: 32px;
 }
@@ -21,6 +22,7 @@
 .auth-form h1 {
   margin: 0 0 16px;
   font-size: 24px;
+  color: var(--navy);
 }
 
 .auth-form label {
@@ -60,6 +62,11 @@
   text-align: center;
 }
 
+.auth-form a {
+  color: var(--yellow-dark);
+  font-weight: 600;
+}
+
 .auth-error {
   color: var(--error);
   font-size: 14px;
@@ -74,25 +81,44 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  background: #fff;
-  border-bottom: 1px solid var(--border);
+  gap: 24px;
+  padding: 14px 28px;
+  background: var(--navy);
+  border-bottom: 3px solid var(--yellow);
+}
+
+.app-brand {
+  color: var(--yellow);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
 }
 
 .app-header nav {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
 }
 
 .app-header nav a {
-  color: var(--text);
+  color: var(--white);
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-bottom: 2px solid transparent;
+}
+
+.app-header nav a:hover {
+  background: var(--navy-light);
 }
 
 .app-header nav a.active {
-  color: var(--accent);
+  color: var(--yellow);
+  border-bottom: 2px solid var(--yellow);
 }
 
 .app-header-user {
@@ -100,13 +126,22 @@
   align-items: center;
   gap: 12px;
   font-size: 14px;
+  color: var(--white);
+  white-space: nowrap;
 }
 
 .app-header-user button {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
+  padding: 7px 14px;
+  border: 1px solid var(--yellow);
   border-radius: 6px;
-  background: #fff;
+  background: transparent;
+  color: var(--yellow);
+  font-weight: 600;
+}
+
+.app-header-user button:hover {
+  background: var(--yellow);
+  color: var(--navy);
 }
 
 .app-content {
@@ -229,4 +264,101 @@ tr:last-child td {
 .status-cancelled {
   background: #e2e3e5;
   color: #41464b;
+}
+
+.month-calendar {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.month-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.month-calendar-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--navy);
+  text-transform: capitalize;
+}
+
+.month-calendar-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.month-calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.legend-dot.leave {
+  background: var(--yellow);
+}
+
+.legend-dot.work {
+  background: var(--navy);
+}
+
+.month-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.month-calendar-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  padding-bottom: 4px;
+}
+
+.month-calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.month-calendar-day.outside {
+  visibility: hidden;
+}
+
+.month-calendar-day.today {
+  border: 2px solid var(--navy);
+  font-weight: 700;
+}
+
+.month-calendar-day.leave {
+  background: var(--yellow);
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.month-calendar-day.work {
+  background: var(--navy);
+  color: var(--white);
+  font-weight: 700;
 }
