@@ -38,6 +38,10 @@ public final class User {
         return new User(id, email, passwordHash, firstName, lastName, role, createdAt);
     }
 
+    public User changePassword(String newPasswordHash) {
+        return new User(id, email, newPasswordHash, firstName, lastName, role, createdAt);
+    }
+
     public Long getId() {
         return id;
     }
