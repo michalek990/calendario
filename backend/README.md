@@ -148,15 +148,43 @@ Błędy: 400 (zły zakres dat / walidacja), 403 (rola bez uprawnień do approve/
 Mapowane przez dedykowany `api.leave.LeaveExceptionHandler` (nie w
 `GlobalExceptionHandler`, żeby moduły mogły rozwijać się niezależnie).
 
+## Moduł: Time Tracking (czas pracy)
+
+Tabela `time_entries`. Bez raportów/agregacji miesięcznych na tym etapie —
+tylko clock-in/clock-out i lista własnych wpisów.
+
+| Endpoint | Opis | Uprawnienia |
+|---|---|---|
+| `POST /api/time-entries/clock-in` | Otwiera nowy wpis (błąd 409 jeśli już jest otwarty) | dowolny zalogowany |
+| `POST /api/time-entries/clock-out` | Zamyka otwarty wpis (błąd 409 jeśli brak otwartego) | dowolny zalogowany |
+| `GET /api/time-entries/me` | Lista własnych wpisów | dowolny zalogowany |
+
+```jsonc
+// POST /api/time-entries/clock-in
+// -> 201 { "id": 1, "userId": 5, "clockIn": "...", "clockOut": null, "breakMinutes": 0, "totalMinutes": null }
+
+// POST /api/time-entries/clock-out
+// -> 200 { ..., "clockOut": "...", "totalMinutes": 480 }
+```
+
+Błędy mapowane przez dedykowany `api.timetracking.TimeTrackingExceptionHandler`
+(analogicznie do modułu Leave — każdy moduł ma własny handler, żeby uniknąć
+współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułami).
+
 ## Testy
 
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
-| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest` |
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest` |
-| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest` |
+| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest` |
+| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
-| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest` |
+| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest` |
+
+Uwaga: e-maile testowe w każdej klasie `@SpringBootTest` muszą być unikalne w
+całym module — Spring cache'uje kontekst (i bazę H2) między klasami testów o
+identycznej konfiguracji, więc powtórzony e-mail w dwóch klasach kończy się
+kolizją unikalności (409) zamiast izolacji.
 
 Uwaga testowa: rejestracja (`/api/auth/register`) zawsze tworzy użytkownika z
 rolą `EMPLOYEE`. Żeby przetestować ścieżki wymagające `MANAGER`/`HR_ADMIN`,
@@ -172,4 +200,4 @@ pominięciem endpointu rejestracji.
 | Clean Architecture (domain/application/infrastructure/api) | ✅ |
 | User + JWT auth (register/login) | ✅ |
 | Leave requests | ✅ |
-| Time tracking | ⏳ |
+| Time tracking | ✅ |
