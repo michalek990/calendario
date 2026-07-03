@@ -54,7 +54,32 @@ backend/
 | createdAt | Instant | ustawiane automatycznie w `@PrePersist` |
 
 `UserRepository.findByEmail(String)` i `existsByEmail(String)` — używane przez
-przyszły moduł autoryzacji (rejestracja/logowanie).
+moduł autoryzacji (rejestracja/logowanie).
+
+## Moduł: Auth (JWT)
+
+| Endpoint | Opis | Auth wymagane |
+|---|---|---|
+| `POST /api/auth/register` | Rejestruje nowego użytkownika (rola domyślna `EMPLOYEE`), zwraca JWT | Nie |
+| `POST /api/auth/login` | Loguje po email+hasło, zwraca JWT | Nie |
+
+Request/response:
+```jsonc
+// POST /api/auth/register
+{ "email": "jan@example.com", "password": "min8znakow", "firstName": "Jan", "lastName": "Kowalski" }
+// -> 201 { "token": "<jwt>" }
+
+// POST /api/auth/login
+{ "email": "jan@example.com", "password": "min8znakow" }
+// -> 200 { "token": "<jwt>" }  |  401 gdy złe dane
+```
+
+Wszystkie pozostałe endpointy (`/api/**` poza `/api/auth/**`) wymagają nagłówka
+`Authorization: Bearer <token>` — patrz `SecurityConfig` i `JwtAuthenticationFilter`.
+
+Hasła hashowane BCryptem (`PasswordEncoder`), sesje bezstanowe (`STATELESS`).
+Sekret JWT i czas wygaśnięcia konfigurowalne przez `app.jwt.secret` /
+`app.jwt.expiration-ms` (env: `JWT_SECRET`).
 
 ## Moduły (w budowie)
 
@@ -62,6 +87,6 @@ przyszły moduł autoryzacji (rejestracja/logowanie).
 |---|---|
 | Bootstrap projektu | ✅ |
 | User entity + repository | ✅ |
-| JWT auth (register/login) | 🔜 |
+| JWT auth (register/login) | ✅ |
 | Leave requests | ⏳ |
 | Time tracking | ⏳ |
