@@ -8,13 +8,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-layout">
       <header className="app-header">
+        <span className="app-brand">Calendario HR</span>
         <nav>
           <NavLink to="/dashboard">Pulpit</NavLink>
-          <NavLink to="/leave-requests">Urlopy</NavLink>
+          <NavLink to="/time-tracking">Rejestracja czasu pracy</NavLink>
+          <NavLink to="/leave-requests">Wnioski urlopowe</NavLink>
           {hasAnyRole('MANAGER', 'HR_ADMIN') && (
-            <NavLink to="/leave-requests/pending">Wnioski do zatwierdzenia</NavLink>
+            <NavLink to="/leave-requests/pending">Do zatwierdzenia</NavLink>
           )}
-          <NavLink to="/time-tracking">Czas pracy</NavLink>
+          <NavLink to="/profile">Profil</NavLink>
+          <NavLink to="/settings">Ustawienia</NavLink>
         </nav>
         <div className="app-header-user">
           <span>{email}</span>
