@@ -20,13 +20,14 @@ Calendario/
 
 | Moduł | Backend | Frontend |
 |---|---|---|
-| Users / Auth (register, login) | ✅ | ✅ (logowanie/rejestracja, profil użytkownika) |
-| Leave (wnioski urlopowe) | ✅ | ✅ (złóż wniosek, lista własnych, zatwierdź/odrzuć dla MANAGER/HR_ADMIN, widoczne na kalendarzu pulpitu) |
-| Time Tracking (czas pracy) | ✅ | ✅ (clock-in/clock-out, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
-| Ustawienia konta | — | ⏳ (placeholder w nawigacji, czeka na endpointy backendu) |
+| Users / Auth (register, login, zmiana hasła) | ✅ | ✅ (logowanie/rejestracja, popup profilu w navbarze, zmiana hasła w ustawieniach) |
+| Leave (wnioski urlopowe) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR_ADMIN, widoczne na kalendarzu pulpitu) |
+| Time Tracking (czas pracy) | ✅ | ✅ (wyśrodkowana karta rozpocznij/zakończ pracę, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
+| Ustawienia wyglądu (dark mode, czcionka, kolor wiodący) | — | ✅ (czysto frontendowe, `localStorage`) |
 
-Nawigacja frontendu w kolorystyce granat/biel/żółty (patrz
-[frontend/README.md](frontend/README.md#wygląd)).
+Nawigacja frontendu w domyślnej kolorystyce jasny niebieski/biel/żółty,
+konfigurowalnej w `/settings` (dark mode, rozmiar czcionki, kolor wiodący) —
+patrz [frontend/README.md](frontend/README.md#wygląd).
 
 Szczegółowa dokumentacja: [backend/README.md](backend/README.md) ·
 [frontend/README.md](frontend/README.md)

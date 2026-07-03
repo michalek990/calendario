@@ -73,44 +73,54 @@ export function TimeTrackingPage() {
     <div>
       <h1>Czas pracy</h1>
 
-      {openEntry ? (
-        <button disabled={isSubmitting} onClick={handleClockOut}>
-          {isSubmitting ? 'Zapisywanie…' : 'Zakończ pracę'}
-        </button>
-      ) : (
-        <button disabled={isSubmitting} onClick={handleClockIn}>
-          {isSubmitting ? 'Zapisywanie…' : 'Rozpocznij pracę'}
-        </button>
-      )}
+      <div className="centered-form-wrapper">
+        <div className="card-form">
+          <h2>Rejestracja czasu pracy</h2>
 
-      {error && <p className="auth-error">{error}</p>}
+          {openEntry ? (
+            <p>
+              Pracujesz od <strong>{formatDateTime(openEntry.clockIn)}</strong>
+            </p>
+          ) : (
+            <p>Nie masz obecnie otwartego wpisu czasu pracy.</p>
+          )}
 
-      {isLoading ? (
-        <p>Ładowanie…</p>
-      ) : entries.length === 0 ? (
-        <p>Brak zarejestrowanych wpisów czasu pracy.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Rozpoczęcie</th>
-              <th>Zakończenie</th>
-              <th>Przerwa (min)</th>
-              <th>Suma</th>
-            </tr>
-          </thead>
-          <tbody>
+          {error && <p className="auth-error">{error}</p>}
+
+          {openEntry ? (
+            <button disabled={isSubmitting} onClick={handleClockOut}>
+              {isSubmitting ? 'Zapisywanie…' : 'Zakończ pracę'}
+            </button>
+          ) : (
+            <button disabled={isSubmitting} onClick={handleClockIn}>
+              {isSubmitting ? 'Zapisywanie…' : 'Rozpocznij pracę'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <section className="list-section">
+        <h2>Twoje wpisy</h2>
+
+        {isLoading ? (
+          <p>Ładowanie…</p>
+        ) : entries.length === 0 ? (
+          <p>Brak zarejestrowanych wpisów czasu pracy.</p>
+        ) : (
+          <ul className="record-list">
             {entries.map((entry) => (
-              <tr key={entry.id}>
-                <td>{formatDateTime(entry.clockIn)}</td>
-                <td>{formatDateTime(entry.clockOut)}</td>
-                <td>{entry.breakMinutes}</td>
-                <td>{formatMinutes(entry.totalMinutes)}</td>
-              </tr>
+              <li key={entry.id} className="record-list-item">
+                <div className="record-list-main">
+                  <strong>{formatDateTime(entry.clockIn)}</strong>
+                  <span>do {formatDateTime(entry.clockOut)}</span>
+                  {entry.breakMinutes > 0 && <span className="record-list-reason">Przerwa: {entry.breakMinutes} min</span>}
+                </div>
+                <span className="status-badge status-approved">{formatMinutes(entry.totalMinutes)}</span>
+              </li>
             ))}
-          </tbody>
-        </table>
-      )}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }

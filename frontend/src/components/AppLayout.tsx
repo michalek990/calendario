@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { UserAvatarMenu } from './UserAvatarMenu'
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { email, logout, hasAnyRole } = useAuth()
+  const { logout, hasAnyRole } = useAuth()
 
   return (
     <div className="app-layout">
@@ -16,11 +17,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {hasAnyRole('MANAGER', 'HR_ADMIN') && (
             <NavLink to="/leave-requests/pending">Do zatwierdzenia</NavLink>
           )}
-          <NavLink to="/profile">Profil</NavLink>
           <NavLink to="/settings">Ustawienia</NavLink>
         </nav>
         <div className="app-header-user">
-          <span>{email}</span>
+          <UserAvatarMenu />
           <button onClick={logout}>Wyloguj się</button>
         </div>
       </header>

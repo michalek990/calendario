@@ -3,6 +3,7 @@ package com.calendario.hrnest.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.emptyString;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,5 +120,55 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void changePassword_updatesPassword_whenCurrentPasswordCorrect() throws Exception {
+        String token = registerAndGetToken("change.pass1@example.com", "staraHaslo123");
+
+        ChangePasswordRequest changeRequest = new ChangePasswordRequest("staraHaslo123", "nowaHaslo456");
+        mockMvc.perform(patch("/api/auth/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changeRequest)))
+                .andExpect(status().isNoContent());
+
+        LoginRequest loginWithNewPassword = new LoginRequest("change.pass1@example.com", "nowaHaslo456");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginWithNewPassword)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void changePassword_returnsUnauthorized_whenCurrentPasswordWrong() throws Exception {
+        String token = registerAndGetToken("change.pass2@example.com", "staraHaslo123");
+
+        ChangePasswordRequest changeRequest = new ChangePasswordRequest("zlehaslo", "nowaHaslo456");
+        mockMvc.perform(patch("/api/auth/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changeRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void changePassword_requiresAuthentication() throws Exception {
+        ChangePasswordRequest changeRequest = new ChangePasswordRequest("staraHaslo123", "nowaHaslo456");
+
+        mockMvc.perform(patch("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changeRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    private String registerAndGetToken(String email, String password) throws Exception {
+        RegisterRequest request = new RegisterRequest(email, password, "Jan", "Kowalski");
+        String response = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response).get("token").asText();
     }
 }

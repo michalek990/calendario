@@ -1,6 +1,8 @@
 package com.calendario.hrnest.api.auth;
 
 import com.calendario.hrnest.application.auth.AuthResult;
+import com.calendario.hrnest.application.auth.ChangePasswordCommand;
+import com.calendario.hrnest.application.auth.ChangePasswordUseCase;
 import com.calendario.hrnest.application.auth.LoginCommand;
 import com.calendario.hrnest.application.auth.LoginUseCase;
 import com.calendario.hrnest.application.auth.RegisterCommand;
@@ -8,6 +10,7 @@ import com.calendario.hrnest.application.auth.RegisterUserUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +22,13 @@ public class AuthController {
 
     private final RegisterUserUseCase registerUserUseCase;
     private final LoginUseCase loginUseCase;
+    private final ChangePasswordUseCase changePasswordUseCase;
 
-    public AuthController(RegisterUserUseCase registerUserUseCase, LoginUseCase loginUseCase) {
+    public AuthController(RegisterUserUseCase registerUserUseCase, LoginUseCase loginUseCase,
+                           ChangePasswordUseCase changePasswordUseCase) {
         this.registerUserUseCase = registerUserUseCase;
         this.loginUseCase = loginUseCase;
+        this.changePasswordUseCase = changePasswordUseCase;
     }
 
     @PostMapping("/register")
@@ -36,5 +42,11 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResult result = loginUseCase.execute(new LoginCommand(request.email(), request.password()));
         return ResponseEntity.ok(new AuthResponse(result.token()));
+    }
+
+    @PatchMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        changePasswordUseCase.execute(new ChangePasswordCommand(request.currentPassword(), request.newPassword()));
+        return ResponseEntity.noContent().build();
     }
 }

@@ -14,9 +14,9 @@ export function listPendingLeaveRequests(token: string): Promise<LeaveRequest[]>
 }
 
 export function approveLeaveRequest(id: number, token: string): Promise<LeaveRequest> {
-  return patchJson<LeaveRequest>(`/leave-requests/${id}/approve`, token)
+  return patchJson<LeaveRequest>(`/leave-requests/${id}/approve`, undefined, token)
 }
 
 export function rejectLeaveRequest(id: number, token: string): Promise<LeaveRequest> {
-  return patchJson<LeaveRequest>(`/leave-requests/${id}/reject`, token)
+  return patchJson<LeaveRequest>(`/leave-requests/${id}/reject`, undefined, token)
 }
