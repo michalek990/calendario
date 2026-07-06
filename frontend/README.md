@@ -18,11 +18,25 @@ produkcyjnym — patrz [root README](../README.md#uruchomienie-przez-docker-comp
 
 ## Wygląd
 
-Domyślna kolorystyka: jasny niebieski (`--primary`) + biel + żółty
-(`--yellow`) jako kolor kontrastu/akcentu. Navbar ma tło w kolorze wiodącym
-z żółtym podkreśleniem aktywnej zakładki, karty formularzy mają żółty pasek
-na górze. Wszystko konfigurowalne na `/settings`:
+Layout w stylu produktu HR SaaS: stały lewy **sidebar** (tło w kolorze
+wiodącym, ikony + etykiety, aktywna pozycja podświetlona żółtym paskiem)
+zamiast poprzedniego górnego navbara, i **topbar** nad treścią z dzwonkiem
+powiadomień (z licznikiem nieprzeczytanych) i menu awatara. Strony
+logowania/rejestracji mają dwupanelowy układ — lewa połowa to branding na
+gradiencie koloru wiodącego, prawa to formularz na jasnym tle. Pulpit ma
+rząd kart KPI (`stat-card`): pozostały urlop, status pracy, nieprzeczytane
+powiadomienia.
+
+Ikony (`components/icons.tsx`) to odręcznie napisane komponenty SVG w stylu
+Feather/Lucide (stroke, bez wypełnienia) — celowo bez zewnętrznej biblioteki
+ikon, żeby nie dokładać zależności dla garści prostych glifów.
+
+Paleta: jasny niebieski (`--primary`) + biel + żółty (`--yellow`) jako
+akcent, spójne tokeny odstępów/promieni/cieni (`--radius-sm/md/lg`,
+`--shadow-sm/md`) w `index.css`. Wszystko konfigurowalne na `/settings`:
 - **tryb ciemny** — przełącznik, zmienia `--bg`/`--surface`/`--text`/`--border`
+  (sidebar zostaje w kolorze wiodącym niezależnie od motywu — to stały
+  element brandingu, tak jak w większości produktów SaaS)
 - **rozmiar czcionki** — mała/średnia/duża, zmienia `font-size` na `<html>`
   (reszta aplikacji skalowana przez jednostki `rem`)
 - **kolor wiodący** — wybór z 5 gotowych presetów (niebieski, granat,
@@ -55,7 +69,8 @@ src/
 │   ├── SettingsContext.tsx # tryb ciemny, rozmiar czcionki, kolor wiodący — trwałe w localStorage
 │   └── colorPresets.ts     # 5 presetów koloru wiodącego + mapowanie rozmiarów czcionki na px
 ├── components/
-│   ├── AppLayout.tsx        # nagłówek z nawigacją (linki zależne od roli), licznik nieprzeczytanych powiadomień, UserAvatarMenu
+│   ├── AppLayout.tsx        # sidebar (nawigacja zależna od roli, licznik nieprzeczytanych) + topbar + UserAvatarMenu
+│   ├── icons.tsx            # zestaw ręcznie napisanych ikon SVG (bez zewnętrznej biblioteki)
 │   ├── UserAvatarMenu.tsx   # kółko z inicjałami — popup z danymi profilu + link do `/profile`
 │   ├── MonthCalendar.tsx    # siatka bieżącego miesiąca z oznaczonymi dniami
 │   └── ProtectedRoute.tsx   # wymaga tokenu; opcjonalnie `allowedRoles`

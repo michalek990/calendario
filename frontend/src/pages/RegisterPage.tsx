@@ -30,56 +30,67 @@ export function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Rejestracja</h1>
-
-        <label htmlFor="firstName">Imię</label>
-        <input
-          id="firstName"
-          type="text"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-        />
-
-        <label htmlFor="lastName">Nazwisko</label>
-        <input
-          id="lastName"
-          type="text"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-        />
-
-        <label htmlFor="email">E-mail</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-
-        <label htmlFor="password">Hasło</label>
-        <input
-          id="password"
-          type="password"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        {error && <p className="auth-error">{error}</p>}
-
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Rejestrowanie…' : 'Zarejestruj się'}
-        </button>
-
+      <div className="auth-page-brand">
+        <span className="auth-page-brand-mark">C</span>
+        <h1>Calendario HR</h1>
         <p>
-          Masz już konto? <Link to="/login">Zaloguj się</Link>
+          Wnioski urlopowe, czas pracy i projekty w jednym miejscu — dla pracowników,
+          przełożonych i działu kadr.
         </p>
-      </form>
+      </div>
+
+      <div className="auth-page-form-side">
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <h1>Rejestracja</h1>
+
+          <label htmlFor="firstName">Imię</label>
+          <input
+            id="firstName"
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+
+          <label htmlFor="lastName">Nazwisko</label>
+          <input
+            id="lastName"
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+
+          <label htmlFor="email">E-mail</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <label htmlFor="password">Hasło</label>
+          <input
+            id="password"
+            type="password"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Rejestrowanie…' : 'Zarejestruj się'}
+          </button>
+
+          <p>
+            Masz już konto? <Link to="/login">Zaloguj się</Link>
+          </p>
+        </form>
+      </div>
     </div>
   )
 }

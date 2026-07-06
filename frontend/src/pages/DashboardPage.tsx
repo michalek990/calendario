@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABELS } from '../auth/jwt'
-import { listMyLeaveRequests, listRecentLeaveActivity } from '../api/leave'
+import { getMyAnnualLeaveSummary, listMyLeaveRequests, listRecentLeaveActivity } from '../api/leave'
 import { listMyTimeEntries } from '../api/timeEntries'
+import { listMyNotifications } from '../api/notifications'
 import { ApiError } from '../api/types'
 import type { LeaveRequest } from '../api/types'
 import { MonthCalendar, type DayStatus } from '../components/MonthCalendar'
 import { eachIsoDateInRange, toIsoDate } from '../utils/calendar'
 import { LEAVE_TYPE_LABELS, STATUS_LABELS } from '../constants/labels'
+import { IconBell, IconCalendar, IconClock } from '../components/icons'
 
 export function DashboardPage() {
   const { token, firstName, lastName, role } = useAuth()
   const [dayStatus, setDayStatus] = useState<Record<string, DayStatus>>({})
   const [recentActivity, setRecentActivity] = useState<LeaveRequest[]>([])
+  const [vacationDaysRemaining, setVacationDaysRemaining] = useState<number | null>(null)
+  const [isWorking, setIsWorking] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const today = useMemo(() => new Date(), [])
@@ -44,6 +49,7 @@ export function DashboardPage() {
         }
 
         setDayStatus(statuses)
+        setIsWorking(timeEntries.some((entry) => entry.clockOut === null))
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'Nie udało się wczytać danych miesiąca')
       }
@@ -57,18 +63,69 @@ export function DashboardPage() {
       }
     }
 
+    async function loadAnnualSummary() {
+      try {
+        const summary = await getMyAnnualLeaveSummary(token as string)
+        setVacationDaysRemaining(summary.vacationDaysRemaining)
+      } catch {
+        // widget urlopu to dodatek — brak nie powinien blokować pulpitu
+      }
+    }
+
+    async function loadNotifications() {
+      try {
+        const notifications = await listMyNotifications(token as string)
+        setUnreadCount(notifications.filter((n) => !n.read).length)
+      } catch {
+        // licznik powiadomień to dodatek — brak nie powinien blokować pulpitu
+      }
+    }
+
     loadMonthData()
     loadRecentActivity()
+    loadAnnualSummary()
+    loadNotifications()
   }, [token])
 
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : null
 
   return (
     <div>
-      <h1>Witaj{displayName ? `, ${displayName}` : ''}</h1>
-      <p>Rola: {role ? (ROLE_LABELS[role] ?? role) : '—'}</p>
+      <div className="page-header">
+        <h1>Witaj{displayName ? `, ${displayName}` : ''}</h1>
+        <p className="page-subtitle">Rola: {role ? (ROLE_LABELS[role] ?? role) : '—'}</p>
+      </div>
 
       {error && <p className="auth-error">{error}</p>}
+
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-card-icon">
+            <IconCalendar />
+          </div>
+          <span className="stat-card-label">Pozostały urlop</span>
+          <span className="stat-card-value">{vacationDaysRemaining ?? '—'}</span>
+          <span className="stat-card-hint">dni wypoczynkowego</span>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-icon">
+            <IconClock />
+          </div>
+          <span className="stat-card-label">Status pracy</span>
+          <span className="stat-card-value">{isWorking ? 'W pracy' : 'Poza pracą'}</span>
+          <span className="stat-card-hint">{isWorking ? 'Masz otwarty wpis czasu pracy' : 'Brak otwartego wpisu'}</span>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-icon">
+            <IconBell />
+          </div>
+          <span className="stat-card-label">Powiadomienia</span>
+          <span className="stat-card-value">{unreadCount}</span>
+          <span className="stat-card-hint">nieprzeczytanych</span>
+        </div>
+      </div>
 
       <MonthCalendar year={year} month={month} dayStatus={dayStatus} />
 
@@ -92,8 +149,6 @@ export function DashboardPage() {
           </ul>
         </section>
       )}
-
-      <p>Wybierz moduł z menu powyżej — Urlopy, Czas pracy albo Projekty.</p>
     </div>
   )
 }

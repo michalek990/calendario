@@ -3,6 +3,17 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { listMyNotifications } from '../api/notifications'
 import { UserAvatarMenu } from './UserAvatarMenu'
+import {
+  IconBell,
+  IconCalendar,
+  IconCheckCircle,
+  IconClock,
+  IconFolder,
+  IconHome,
+  IconLogOut,
+  IconSettings,
+  IconUser,
+} from './icons'
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { token, logout, hasAnyRole } = useAuth()
@@ -28,29 +39,61 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [token])
 
   return (
-    <div className="app-layout">
-      <header className="app-header">
-        <span className="app-brand">Calendario HR</span>
-        <nav>
-          <NavLink to="/dashboard">Pulpit</NavLink>
-          <NavLink to="/time-tracking">Rejestracja czasu pracy</NavLink>
-          <NavLink to="/leave-requests">Wnioski urlopowe</NavLink>
-          {hasAnyRole('MANAGER', 'HR', 'ADMIN') && (
-            <NavLink to="/leave-requests/pending">Do zatwierdzenia</NavLink>
-          )}
-          <NavLink to="/projects">Projekty</NavLink>
-          <NavLink to="/notifications">
-            Powiadomienia{unreadCount > 0 ? ` (${unreadCount})` : ''}
-          </NavLink>
-          <NavLink to="/profile">Profil</NavLink>
-          <NavLink to="/settings">Ustawienia</NavLink>
-        </nav>
-        <div className="app-header-user">
-          <UserAvatarMenu />
-          <button onClick={logout}>Wyloguj się</button>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <span className="brand-mark">C</span>
+          <span className="brand-name">Calendario HR</span>
         </div>
-      </header>
-      <main className="app-content">{children}</main>
+
+        <nav className="sidebar-nav">
+          <NavLink to="/dashboard" className="sidebar-link">
+            <IconHome /> <span>Pulpit</span>
+          </NavLink>
+          <NavLink to="/time-tracking" className="sidebar-link">
+            <IconClock /> <span>Czas pracy</span>
+          </NavLink>
+          <NavLink to="/leave-requests" end className="sidebar-link">
+            <IconCalendar /> <span>Wnioski urlopowe</span>
+          </NavLink>
+          {hasAnyRole('MANAGER', 'HR', 'ADMIN') && (
+            <NavLink to="/leave-requests/pending" className="sidebar-link">
+              <IconCheckCircle /> <span>Do zatwierdzenia</span>
+            </NavLink>
+          )}
+          <NavLink to="/projects" className="sidebar-link">
+            <IconFolder /> <span>Projekty</span>
+          </NavLink>
+          <NavLink to="/notifications" className="sidebar-link">
+            <IconBell /> <span>Powiadomienia</span>
+            {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
+          </NavLink>
+          <NavLink to="/profile" className="sidebar-link">
+            <IconUser /> <span>Profil</span>
+          </NavLink>
+          <NavLink to="/settings" className="sidebar-link">
+            <IconSettings /> <span>Ustawienia</span>
+          </NavLink>
+        </nav>
+
+        <button className="sidebar-logout" onClick={logout}>
+          <IconLogOut /> <span>Wyloguj się</span>
+        </button>
+      </aside>
+
+      <div className="app-main">
+        <header className="topbar">
+          <div className="topbar-spacer" />
+          <div className="topbar-actions">
+            <NavLink to="/notifications" className="icon-button" aria-label="Powiadomienia">
+              <IconBell />
+              {unreadCount > 0 && <span className="icon-button-badge">{unreadCount}</span>}
+            </NavLink>
+            <UserAvatarMenu />
+          </div>
+        </header>
+        <main className="app-content">{children}</main>
+      </div>
     </div>
   )
 }

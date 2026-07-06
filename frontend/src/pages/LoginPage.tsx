@@ -28,37 +28,48 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Logowanie</h1>
-
-        <label htmlFor="email">E-mail</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-
-        <label htmlFor="password">Hasło</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        {error && <p className="auth-error">{error}</p>}
-
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Logowanie…' : 'Zaloguj się'}
-        </button>
-
+      <div className="auth-page-brand">
+        <span className="auth-page-brand-mark">C</span>
+        <h1>Calendario HR</h1>
         <p>
-          Nie masz konta? <Link to="/register">Zarejestruj się</Link>
+          Wnioski urlopowe, czas pracy i projekty w jednym miejscu — dla pracowników,
+          przełożonych i działu kadr.
         </p>
-      </form>
+      </div>
+
+      <div className="auth-page-form-side">
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <h1>Logowanie</h1>
+
+          <label htmlFor="email">E-mail</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <label htmlFor="password">Hasło</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Logowanie…' : 'Zaloguj się'}
+          </button>
+
+          <p>
+            Nie masz konta? <Link to="/register">Zarejestruj się</Link>
+          </p>
+        </form>
+      </div>
     </div>
   )
 }
