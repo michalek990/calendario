@@ -1,6 +1,7 @@
 package com.calendario.hrnest.application.leave;
 
 import com.calendario.hrnest.application.common.CurrentUserProvider;
+import com.calendario.hrnest.application.common.FacilityScope;
 import com.calendario.hrnest.application.notification.LeaveDecisionNotifier;
 import com.calendario.hrnest.domain.leave.LeaveRequest;
 import com.calendario.hrnest.domain.leave.LeaveRequestRepository;
@@ -39,6 +40,10 @@ public class RejectLeaveRequestUseCase {
         if (role == Role.MANAGER) {
             LeaveRequestScopeGuard.requireDirectSupervisorOf(
                     userRepository, currentUserProvider.currentUserId(), leaveRequest.getRequesterId());
+        } else if (role == Role.HR
+                && !FacilityScope.isSameFacility(userRepository, currentUserProvider.currentUserId(),
+                        leaveRequest.getRequesterId())) {
+            throw new ForbiddenLeaveActionException();
         }
 
         LeaveRequest rejected = leaveRequest.reject(currentUserProvider.currentUserId());

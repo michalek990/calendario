@@ -9,14 +9,17 @@ import com.calendario.hrnest.domain.user.UserRepository;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
- * Lista wpisów czasu pracy wszystkich pracowników — dla HR, MANAGER i ADMIN,
- * którzy wobec tej funkcji mają równe uprawnienia (bez ograniczenia MANAGER-a
- * do bezpośrednich podwładnych, w przeciwieństwie do modułu wniosków urlopowych).
+ * Lista wpisów czasu pracy wszystkich pracowników — dla HR, MANAGER i ADMIN.
+ * `MANAGER` i `ADMIN` mają wobec tej funkcji równe (nieograniczone)
+ * uprawnienia (bez ograniczenia MANAGER-a do bezpośrednich podwładnych, w
+ * przeciwieństwie do modułu wniosków urlopowych); `HR` widzi wyłącznie wpisy
+ * pracowników swojego zakładu.
  */
 @Component
 public class ListManagedTimeEntriesUseCase {
@@ -41,7 +44,17 @@ public class ListManagedTimeEntriesUseCase {
         Map<Long, User> usersById = userRepository.findAll().stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        return timeEntryRepository.findAll().stream()
+        var entries = timeEntryRepository.findAll().stream();
+
+        if (role == Role.HR) {
+            String hrFacility = usersById.get(currentUserProvider.currentUserId()).getFacility();
+            entries = entries.filter(entry -> {
+                User owner = usersById.get(entry.getUserId());
+                return owner != null && Objects.equals(owner.getFacility(), hrFacility);
+            });
+        }
+
+        return entries
                 .map(entry -> ManagedTimeEntryView.from(entry, usersById.get(entry.getUserId())))
                 .sorted(Comparator.comparing(ManagedTimeEntryView::clockIn).reversed())
                 .toList();

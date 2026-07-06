@@ -1292,7 +1292,8 @@ tr.table-row-editing td {
   color: var(--text-muted);
 }
 
-.settings-form input {
+.settings-form input,
+.settings-form select {
   padding: 11px 13px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1300,7 +1301,8 @@ tr.table-row-editing td {
   color: var(--text);
 }
 
-.settings-form input:focus {
+.settings-form input:focus,
+.settings-form select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);

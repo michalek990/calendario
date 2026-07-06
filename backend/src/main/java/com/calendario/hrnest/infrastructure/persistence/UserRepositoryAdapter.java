@@ -49,6 +49,18 @@ public class UserRepositoryAdapter implements UserRepository {
         return springDataUserRepository.existsBySupervisorId(supervisorId);
     }
 
+    @Override
+    public boolean existsByFacility(String facility) {
+        return springDataUserRepository.existsByFacility(facility);
+    }
+
+    @Override
+    public List<User> findByFacility(String facility) {
+        return springDataUserRepository.findByFacility(facility).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private UserJpaEntity toEntity(User user) {
         UserJpaEntity entity = new UserJpaEntity();
         entity.setId(user.getId());

@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.calendario.hrnest.api.auth.RegisterRequest;
 import com.calendario.hrnest.application.auth.TokenProvider;
+import com.calendario.hrnest.domain.facility.Facility;
+import com.calendario.hrnest.domain.facility.FacilityRepository;
 import com.calendario.hrnest.domain.user.Role;
 import com.calendario.hrnest.domain.user.User;
 import com.calendario.hrnest.domain.user.UserRepository;
@@ -36,6 +38,9 @@ class UserControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private FacilityRepository facilityRepository;
+
+    @Autowired
     private TokenProvider tokenProvider;
 
     private record RegisteredUser(Long id, String token) {
@@ -59,6 +64,19 @@ class UserControllerTest {
         return new RegisteredUser(saved.getId(), tokenProvider.generateToken(saved));
     }
 
+    private RegisteredUser createUserAndGetToken(String email, Role role, String facility) {
+        User user = User.reconstitute(null, email, "hash", "Ala", "Szefowa", role,
+                null, null, facility, null, Instant.now());
+        User saved = userRepository.save(user);
+        return new RegisteredUser(saved.getId(), tokenProvider.generateToken(saved));
+    }
+
+    private void ensureFacilityExists(String name) {
+        if (!facilityRepository.existsByName(name)) {
+            facilityRepository.save(Facility.create(name));
+        }
+    }
+
     @Test
     void myProfile_returnsDefaultProfile_forNewlyRegisteredUser() throws Exception {
         RegisteredUser employee = registerEmployeeAndGetToken("profil1@example.com");
@@ -73,7 +91,8 @@ class UserControllerTest {
 
     @Test
     void updateProfile_asHrAdmin_setsOrganizationalData() throws Exception {
-        RegisteredUser hrAdmin = createUserAndGetToken("hr1@example.com", Role.HR);
+        ensureFacilityExists("Warszawa");
+        RegisteredUser hrAdmin = createUserAndGetToken("hr1@example.com", Role.HR, "Warszawa");
         RegisteredUser supervisor = createUserAndGetToken("kierownik1@example.com", Role.MANAGER);
         RegisteredUser employee = registerEmployeeAndGetToken("profil2@example.com");
 
@@ -110,7 +129,8 @@ class UserControllerTest {
 
     @Test
     void updateProfile_selfSupervision_isRejected() throws Exception {
-        RegisteredUser hrAdmin = createUserAndGetToken("hr2@example.com", Role.HR);
+        ensureFacilityExists("Z");
+        RegisteredUser hrAdmin = createUserAndGetToken("hr2@example.com", Role.HR, "Z");
         RegisteredUser employee = registerEmployeeAndGetToken("profil4@example.com");
 
         mockMvc.perform(patch("/api/users/" + employee.id() + "/profile")

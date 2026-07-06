@@ -25,13 +25,14 @@ Calendario/
 | Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony/podwładny) | ✅ | ✅ (`/profile`: podgląd własnych danych; `/admin/users/:id`: HR/ADMIN edytuje dane dowolnego pracownika z listy, bez ręcznego podawania id) |
 | Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ | ✅ (`/profile`: podgląd i edycja własnych danych) |
 | Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (formularz nowego wniosku ze wszystkimi typami, lista własnych, zatwierdź/odrzuć dla MANAGER/HR/ADMIN, widoczne na kalendarzu pulpitu) |
-| Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy pracownik | ✅ | ✅ (`/team`: frontend woła te same endpointy, backend dodatkowo weryfikuje zakres) |
+| Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR tylko własny zakład, ADMIN każdy pracownik | ✅ | ✅ (`/team`: frontend woła te same endpointy, backend dodatkowo weryfikuje zakres) |
 | Roczny limit urlopu wypoczynkowego (26 dni) i roczne podsumowanie (praca zdalna vs pozostałe) | ✅ | ✅ (widget podsumowania rocznego na `/leave-requests`) |
 | Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ | ✅ (widget na pulpicie) |
 | Powiadomienia w aplikacji i mailem o decyzji na wniosku | ✅ | ✅ (`/notifications` + licznik nieprzeczytanych w navbarze; e-mail jest tylko backendowy z natury) |
 | Time Tracking (czas pracy: clock-in/out, log ręczny, korekta wpisu) | ✅ | ✅ (rozpocznij/zakończ pracę z wyborem projektu, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
-| Zarządzanie zespołem — wnioski i czas pracy podwładnych (`/team`) | ✅ | ✅ (MANAGER/HR/ADMIN: zatwierdzanie wniosków + podgląd i edycja wpisów czasu pracy zespołu) |
-| Zarządzanie zakładami — wnioski i czas pracy wg zakładu (`/admin/facilities`) | ✅ | ✅ (ADMIN: wybór zakładu z listy, te same akcje co `/team` przefiltrowane do jednego zakładu) |
+| Zarządzanie zespołem — wnioski i czas pracy podwładnych (`/team`) | ✅ | ✅ (MANAGER/HR/ADMIN: zatwierdzanie wniosków + podgląd i edycja wpisów czasu pracy zespołu; dla HR automatycznie zawężone do własnego zakładu przez backend) |
+| Zakłady jako encja + zarządzanie nimi (`GET/POST/PUT/DELETE /api/facilities`) | ✅ | ✅ (`/admin/facilities`: zakładki wnioski/czas pracy wybranego zakładu + "Zarządzanie zakładami" — dodaj/zmień nazwę/usuń, ADMIN) |
+| Zakres uprawnień HR wg własnego zakładu (lista pracowników, edycja profilu, wnioski, czas pracy) | ✅ | ✅ (bez zmian frontendu — backend sam zwraca HR-owi tylko dane jego zakładu) |
 | Projekty + rejestrowanie czasu w projekcie + podsumowania | ✅ | ✅ (`/projects`: lista, tworzenie dla HR/ADMIN, własne i zespołowe podsumowanie czasu) |
 | Ustawienia wyglądu (dark mode, czcionka, kolor wiodący) | — | ✅ (czysto frontendowe, `localStorage`) |
 

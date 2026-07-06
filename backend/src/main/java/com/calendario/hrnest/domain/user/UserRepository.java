@@ -18,4 +18,10 @@ public interface UserRepository {
 
     /** Czy dany użytkownik jest przełożonym co najmniej jednej osoby. */
     boolean existsBySupervisorId(Long supervisorId);
+
+    /** Czy co najmniej jeden pracownik ma przypisany dany zakład — używane przy usuwaniu zakładu. */
+    boolean existsByFacility(String facility);
+
+    /** Wszyscy pracownicy przypisani do danego zakładu — używane przy zmianie nazwy zakładu. */
+    List<User> findByFacility(String facility);
 }

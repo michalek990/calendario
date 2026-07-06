@@ -31,15 +31,38 @@ class ListAllUsersUseCaseTest {
 
     @Test
     void execute_returnsUsers_sortedByLastNameThenFirstName_whenCallerIsHr() {
-        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        User hr = User.reconstitute(3L, "hr@example.com", "hash", "Hania", "Kadrowa", Role.HR, Instant.now());
         User zbigniew = User.reconstitute(1L, "z@example.com", "hash", "Zbigniew", "Adamski", Role.EMPLOYEE,
                 Instant.now());
         User anna = User.reconstitute(2L, "a@example.com", "hash", "Anna", "Baran", Role.EMPLOYEE, Instant.now());
+
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(currentUserProvider.currentUserId()).thenReturn(3L);
+        when(userRepository.findById(3L)).thenReturn(java.util.Optional.of(hr));
         when(userRepository.findAll()).thenReturn(List.of(zbigniew, anna));
 
         List<UserProfileView> result = useCase().execute();
 
         assertThat(result).extracting(UserProfileView::lastName).containsExactly("Adamski", "Baran");
+    }
+
+    @Test
+    void execute_hrOnlySeesUsersInOwnFacility() {
+        User hr = User.reconstitute(3L, "hr@example.com", "hash", "Hania", "Kadrowa", Role.HR,
+                null, null, "Warszawa", null, Instant.now());
+        User sameFacility = User.reconstitute(1L, "z@example.com", "hash", "Zbigniew", "Adamski", Role.EMPLOYEE,
+                null, null, "Warszawa", null, Instant.now());
+        User otherFacility = User.reconstitute(2L, "a@example.com", "hash", "Anna", "Baran", Role.EMPLOYEE,
+                null, null, "Krakow", null, Instant.now());
+
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(currentUserProvider.currentUserId()).thenReturn(3L);
+        when(userRepository.findById(3L)).thenReturn(java.util.Optional.of(hr));
+        when(userRepository.findAll()).thenReturn(List.of(sameFacility, otherFacility));
+
+        List<UserProfileView> result = useCase().execute();
+
+        assertThat(result).extracting(UserProfileView::lastName).containsExactly("Adamski");
     }
 
     @Test

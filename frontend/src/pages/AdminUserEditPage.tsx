@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { listFacilities } from '../api/facilities'
 import { listAllUsers, updateUserOrganization, updateUserRole } from '../api/users'
 import { ApiError } from '../api/types'
-import type { UserProfile } from '../api/types'
+import type { Facility, UserProfile } from '../api/types'
 import { ROLE_LABELS } from '../auth/jwt'
 import type { Role } from '../auth/jwt'
 
@@ -28,6 +29,7 @@ export function AdminUserEditPage() {
   const userId = Number(id)
 
   const [users, setUsers] = useState<UserProfile[]>([])
+  const [facilities, setFacilities] = useState<Facility[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -38,9 +40,10 @@ export function AdminUserEditPage() {
   useEffect(() => {
     if (!token) return
     setIsLoading(true)
-    listAllUsers(token)
-      .then((allUsers) => {
+    Promise.all([listAllUsers(token), listFacilities(token)])
+      .then(([allUsers, allFacilities]) => {
         setUsers(allUsers)
+        setFacilities(allFacilities)
         const target = allUsers.find((u) => u.id === userId)
         if (!target) {
           setLoadError('Nie znaleziono użytkownika')
@@ -166,13 +169,21 @@ export function AdminUserEditPage() {
 
           <div>
             <label htmlFor="edit-facility">Zakład</label>
-            <input
+            <select
               id="edit-facility"
-              type="text"
-              placeholder="—"
               value={form.facility}
               onChange={(e) => setForm({ ...form, facility: e.target.value })}
-            />
+            >
+              <option value="">Brak</option>
+              {form.facility && !facilities.some((f) => f.name === form.facility) && (
+                <option value={form.facility}>{form.facility} (nieznany zakład)</option>
+              )}
+              {facilities.map((facility) => (
+                <option key={facility.id} value={facility.name}>
+                  {facility.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

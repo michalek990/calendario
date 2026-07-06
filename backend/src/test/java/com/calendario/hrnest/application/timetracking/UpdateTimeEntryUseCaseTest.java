@@ -15,6 +15,8 @@ import com.calendario.hrnest.domain.timetracking.exception.ForbiddenTimeEntryAct
 import com.calendario.hrnest.domain.timetracking.exception.InvalidTimeEntryRangeException;
 import com.calendario.hrnest.domain.timetracking.exception.TimeEntryNotFoundException;
 import com.calendario.hrnest.domain.user.Role;
+import com.calendario.hrnest.domain.user.User;
+import com.calendario.hrnest.domain.user.UserRepository;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -35,14 +37,22 @@ class UpdateTimeEntryUseCaseTest {
     private ProjectRepository projectRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private CurrentUserProvider currentUserProvider;
 
     private UpdateTimeEntryUseCase useCase() {
-        return new UpdateTimeEntryUseCase(timeEntryRepository, projectRepository, currentUserProvider);
+        return new UpdateTimeEntryUseCase(timeEntryRepository, projectRepository, userRepository, currentUserProvider);
     }
 
     private TimeEntry existingEntry() {
         return TimeEntry.reconstitute(1L, 7L, CLOCK_IN, CLOCK_OUT, 0, null);
+    }
+
+    private User userWithFacility(Long id, String facility) {
+        return User.reconstitute(id, "u" + id + "@example.com", "hash", "First", "Last", Role.EMPLOYEE,
+                null, null, facility, null, Instant.now());
     }
 
     @Test
@@ -135,13 +145,27 @@ class UpdateTimeEntryUseCaseTest {
     }
 
     @Test
-    void execute_allowsHrToUpdateSomeoneElsesEntry() {
+    void execute_allowsHrToUpdateEntryOfSomeoneInOwnFacility() {
         when(timeEntryRepository.findById(1L)).thenReturn(Optional.of(existingEntry()));
         when(currentUserProvider.currentUserId()).thenReturn(99L);
         when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(userRepository.findById(99L)).thenReturn(Optional.of(userWithFacility(99L, "Warszawa")));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(userWithFacility(7L, "Warszawa")));
         when(timeEntryRepository.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertThat(useCase().execute(new UpdateTimeEntryCommand(1L, CLOCK_IN, CLOCK_OUT, null, null))).isNotNull();
+    }
+
+    @Test
+    void execute_throwsForbidden_whenHrUpdatesEntryOfSomeoneOutsideOwnFacility() {
+        when(timeEntryRepository.findById(1L)).thenReturn(Optional.of(existingEntry()));
+        when(currentUserProvider.currentUserId()).thenReturn(99L);
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(userRepository.findById(99L)).thenReturn(Optional.of(userWithFacility(99L, "Warszawa")));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(userWithFacility(7L, "Krakow")));
+
+        assertThatThrownBy(() -> useCase().execute(new UpdateTimeEntryCommand(1L, CLOCK_IN, CLOCK_OUT, null, null)))
+                .isInstanceOf(ForbiddenTimeEntryActionException.class);
     }
 
     @Test

@@ -84,15 +84,38 @@ class ApproveLeaveRequestUseCaseTest {
     void execute_approvesRequest_whenCallerIsHr_regardlessOfSupervisor() {
         LeaveRequest pending = LeaveRequest.create(
                 1L, LeaveType.VACATION, LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), null);
+        User hr = User.reconstitute(5L, "hr@example.com", "hash", "Ala", "Kadrowa", Role.HR, Instant.now());
+        User requester = User.reconstitute(1L, "pracownik@example.com", "hash", "Jan", "Kowalski", Role.EMPLOYEE,
+                Instant.now());
 
         when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
         when(currentUserProvider.currentUserId()).thenReturn(5L);
         when(leaveRequestRepository.findById(1L)).thenReturn(Optional.of(pending));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(hr));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
         when(leaveRequestRepository.save(any(LeaveRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LeaveRequestView view = useCase().execute(1L);
 
         assertThat(view.status()).isEqualTo(LeaveStatus.APPROVED);
+    }
+
+    @Test
+    void execute_throwsForbidden_whenHrIsOutsideRequesterFacility() {
+        LeaveRequest pending = LeaveRequest.create(
+                1L, LeaveType.VACATION, LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), null);
+        User hr = User.reconstitute(5L, "hr@example.com", "hash", "Ala", "Kadrowa", Role.HR,
+                null, null, "Warszawa", null, Instant.now());
+        User requester = User.reconstitute(1L, "pracownik@example.com", "hash", "Jan", "Kowalski", Role.EMPLOYEE,
+                null, null, "Krakow", null, Instant.now());
+
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(currentUserProvider.currentUserId()).thenReturn(5L);
+        when(leaveRequestRepository.findById(1L)).thenReturn(Optional.of(pending));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(hr));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+
+        assertThatThrownBy(() -> useCase().execute(1L)).isInstanceOf(ForbiddenLeaveActionException.class);
     }
 
     @Test

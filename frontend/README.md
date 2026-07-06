@@ -72,6 +72,7 @@ src/
 │   ├── users.ts            # getMyProfile/updateMyPersonalInfo/updateUserOrganization/listAllUsers/updateUserRole
 │   ├── notifications.ts    # listMyNotifications()/markNotificationAsRead()
 │   ├── projects.ts         # listProjects()/createProject()/getProjectTimeSummary()
+│   ├── facilities.ts       # listFacilities()/createFacility()/updateFacility()/deleteFacility()
 │   └── types.ts            # DTO + ApiError
 ├── auth/
 │   ├── AuthContext.tsx   # token w localStorage, email/rola/imię+nazwisko z payloadu JWT, hasAnyRole()
@@ -104,7 +105,7 @@ src/
     ├── SettingsPage.tsx         # dark mode, rozmiar czcionki, kolor wiodący, zmiana hasła
     ├── AdminUsersPage.tsx       # lista wszystkich pracowników (rola, stanowisko, dział, zakład, przełożony) — ADMIN
     ├── AdminUserEditPage.tsx    # osobny widok edycji jednego użytkownika (rola/stanowisko/dział/zakład/przełożony) — ADMIN
-    └── AdminFacilitiesPage.tsx  # wybór zakładu + wnioski urlopowe i czas pracy tylko pracowników tego zakładu — ADMIN
+    └── AdminFacilitiesPage.tsx  # 3 zakładki: wnioski i czas pracy wybranego zakładu + CRUD listy zakładów — ADMIN
 ```
 
 ## Zaimplementowane ekrany
@@ -115,7 +116,7 @@ src/
 | `/register` | Rejestracja (e-mail, hasło, imię, nazwisko) → zapisuje JWT, przekierowuje do `/dashboard` | publiczny |
 | `/dashboard` | Powitanie, rola, kalendarz bieżącego miesiąca, widget "ostatnie zmiany na wnioskach" | zalogowany |
 | `/leave-requests` | Podsumowanie roczne (dni pracy zdalnej vs pozostałe, wykorzystanie limitu urlopu wypoczynkowego) + formularz nowego wniosku (wszystkie 10 typów) + lista własnych wniosków | zalogowany |
-| `/team` | Zakładki: wnioski `PENDING` (zatwierdź/odrzuć) i czas pracy zespołu (podgląd + edycja wpisu) | `MANAGER` (backend dodatkowo ogranicza wnioski do bezpośrednich podwładnych) / `HR` / `ADMIN` |
+| `/team` | Zakładki: wnioski `PENDING` (zatwierdź/odrzuć) i czas pracy zespołu (podgląd + edycja wpisu) | `MANAGER` (backend ogranicza wnioski do bezpośrednich podwładnych) / `HR` (backend ogranicza do własnego zakładu) / `ADMIN` |
 | `/time-tracking` | Rozpocznij/zakończ pracę z opcjonalnym wyborem projektu + własne podsumowanie czasu per projekt + lista wpisów | zalogowany |
 | `/projects` | Lista projektów; formularz nowego projektu; własne podsumowanie czasu per projekt; zbiorcze podsumowanie zespołu per projekt | zalogowany (tworzenie: `HR`/`ADMIN`; zbiorcze podsumowanie: `MANAGER`/`HR`/`ADMIN`) |
 | `/notifications` | Lista powiadomień (decyzje na wnioskach), oznacz jako przeczytane | zalogowany |
@@ -123,7 +124,7 @@ src/
 | `/settings` | Dark mode, rozmiar czcionki, wybór koloru wiodącego, formularz zmiany hasła | zalogowany |
 | `/admin/users` | Lista wszystkich pracowników (rola, stanowisko, dział, zakład, przełożony) — edycja przenosi na osobną podstronę zamiast edycji w wierszu tabeli | `ADMIN` |
 | `/admin/users/:id` | Osobny widok edycji jednego pracownika: rola, stanowisko, dział, zakład, przełożony | `ADMIN` |
-| `/admin/facilities` | Wybór zakładu z listy + wnioski urlopowe i czas pracy **tylko** pracowników wybranego zakładu (te same tabele co `/team`, dodatkowo z imieniem/nazwiskiem wnioskodawcy zamiast samego id) | `ADMIN` |
+| `/admin/facilities` | 3 zakładki: wnioski urlopowe i czas pracy **tylko** wybranego zakładu (z imieniem/nazwiskiem wnioskodawcy zamiast samego id) + "Zarządzanie zakładami" (dodaj/zmień nazwę/usuń zakład) | `ADMIN` |
 
 Kółko z inicjałami w prawym górnym rogu nagłówka nadal pokazuje szybki popup
 (imię, nazwisko, e-mail, rola) i teraz linkuje do pełnej strony `/profile`
@@ -191,12 +192,27 @@ jego id, więc `LeaveApprovalTable` pokazuje wnioskodawcę jako `#{requesterId}`
 chyba że strona przekaże mapę `requesterNameById` (id → "Imię Nazwisko`).
 `TeamManagementPage` tej mapy nie przekazuje — `MANAGER` nie ma dostępu do
 `GET /api/users` (tylko `HR`/`ADMIN`), więc nie ma skąd jej wziąć. `AdminFacilitiesPage`
-(tylko `ADMIN`, który ma dostęp do `GET /api/users`) buduje tę mapę z listy
-wszystkich pracowników i pokazuje pełne imię i nazwisko zamiast samego id.
+(tylko `ADMIN`, który ma dostęp do pełnej listy `GET /api/users`) buduje tę
+mapę z listy wszystkich pracowników i pokazuje pełne imię i nazwisko zamiast
+samego id.
 
-`AdminFacilitiesPage` filtruje wnioski i wpisy czasu pracy pobrane z
-istniejących endpointów (`GET /api/leave-requests/pending`, `GET /api/time-entries`
-— oba już zwracają dane wszystkich pracowników dla `ADMIN`) po polu
-`facility` dopasowanym przez id użytkownika z `GET /api/users` — samo
-filtrowanie po zakładzie dzieje się więc całkowicie po stronie frontendu, bez
-zmian w API.
+**Zakres HR jest wymuszany przez backend, nie przez frontend.** `TeamManagementPage`
+(`/team`) nie robi żadnego filtrowania po zakładzie — po prostu woła
+`GET /api/leave-requests/pending` i `GET /api/time-entries` tak jak zawsze;
+skoro backend (patrz [backend/README.md](../backend/README.md#moduł-zakłady-facility))
+sam zwraca `HR`-owi tylko wpisy/wnioski jego zakładu, strona automatycznie
+pokazuje właściwy, zawężony zestaw danych bez żadnej dodatkowej logiki po
+stronie klienta.
+
+`AdminFacilitiesPage` (tylko `ADMIN`, który nie podlega zawężeniu backendu)
+dodatkowo filtruje po stronie frontendu — pobiera wnioski/wpisy **wszystkich**
+zakładów naraz, a wybór z rozwijanej listy (`GET /api/facilities`) tylko
+zawęża to, co już ma w pamięci, dopasowując po polu `facility` z `GET /api/users`.
+Trzecia zakładka, "Zarządzanie zakładami", to bezpośredni CRUD nad
+`/api/facilities` (dodaj/zmień nazwę/usuń) — zmiana nazwy odświeża też listę
+pracowników, bo backend kaskadowo aktualizuje ich pole `facility`.
+
+Pole "Zakład" w `AdminUserEditPage` i w sekcji HR/ADMIN na `/profile` to teraz
+rozwijana lista (`GET /api/facilities`), nie dowolny tekst — zapobiega
+literówkom/duplikatom i odpowiada walidacji backendu (`FacilityNotFoundException`,
+jeśli podana wartość nie istnieje na liście zakładów).

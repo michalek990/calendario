@@ -2,7 +2,7 @@ import { ApiError } from './types'
 
 const API_BASE = '/api'
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'PUT'
+type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
 async function request<TResponse>(method: Method, path: string, body?: unknown, token?: string): Promise<TResponse> {
   const headers: Record<string, string> = {}
@@ -44,6 +44,10 @@ export function patchJson<TResponse>(path: string, body?: unknown, token?: strin
 
 export function putJson<TResponse>(path: string, body?: unknown, token?: string): Promise<TResponse> {
   return request<TResponse>('PUT', path, body, token)
+}
+
+export function deleteJson<TResponse>(path: string, token?: string): Promise<TResponse> {
+  return request<TResponse>('DELETE', path, undefined, token)
 }
 
 async function extractErrorMessage(response: Response): Promise<string> {

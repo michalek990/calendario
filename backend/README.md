@@ -246,17 +246,19 @@ decyzji przełożonego", więc korzysta z tego samego cyklu życia
 | `GET /api/leave-requests/me` | Lista własnych wniosków | dowolny zalogowany |
 | `GET /api/leave-requests/me/recent-activity` | Ostatnie zmiany na własnych wnioskach (max 10, sortowane po dacie ostatniej zmiany malejąco) | dowolny zalogowany |
 | `GET /api/leave-requests/me/annual-summary` | Roczne podsumowanie: dni pracy zdalnej vs pozostałe nieobecności, wykorzystanie limitu urlopu wypoczynkowego | dowolny zalogowany |
-| `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
-| `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
-| `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
+| `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` (tylko bezpośredni podwładni) / `HR` (tylko własny zakład) / `ADMIN` |
+| `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` (tylko własny zakład) / `ADMIN` |
+| `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` (tylko własny zakład) / `ADMIN` |
 
-**Zakres uprawnień MANAGER.** Przełożony widzi w `/pending` i może
-zatwierdzać/odrzucać wyłącznie wnioski użytkowników, których `supervisorId`
-wskazuje na niego (bezpośredni podwładni) — sprawdzane przez
-`LeaveRequestScopeGuard` we wszystkich trzech use case'ach. `HR` i `ADMIN` nie
-podlegają temu ograniczeniu — widzą i decydują o wnioskach każdego pracownika.
-Próba zatwierdzenia/odrzucenia wniosku spoza swojego zespołu przez `MANAGER`
-kończy się 403, tak samo jak dla `EMPLOYEE`.
+**Zakres uprawnień MANAGER i HR.** Przełożony (`MANAGER`) widzi w `/pending` i
+może zatwierdzać/odrzucać wyłącznie wnioski użytkowników, których
+`supervisorId` wskazuje na niego (bezpośredni podwładni) — sprawdzane przez
+`LeaveRequestScopeGuard`. `HR` ma analogiczne, ale niezależne ograniczenie —
+widzi i decyduje wyłącznie o wnioskach pracowników swojego zakładu
+(`application.common.FacilityScope`, patrz [Moduł: Zakłady](#moduł-zakłady-facility)).
+`ADMIN` nie podlega żadnemu z tych ograniczeń — widzi i decyduje o wnioskach
+każdego pracownika. Próba zatwierdzenia/odrzucenia wniosku spoza swojego
+zespołu/zakładu kończy się 403, tak samo jak dla `EMPLOYEE`.
 
 **Roczny limit urlopu wypoczynkowego (26 dni).** `AnnualLeaveLimitPolicy`
 (czysta logika domenowa, bez zależności od repozytorium) pilnuje, żeby suma
@@ -320,10 +322,10 @@ HR/MANAGER/ADMIN — podgląd i korekta wpisów wszystkich pracowników.
 | `POST /api/time-entries/clock-in` | Otwiera nowy wpis; opcjonalnie `projectId` i/lub `clockIn` (własna godzina rozpoczęcia zamiast "teraz") — błąd 409 jeśli już jest otwarty wpis, 404 jeśli projekt nie istnieje | dowolny zalogowany |
 | `POST /api/time-entries/clock-out` | Zamyka otwarty wpis; opcjonalnie `clockOut` (własna godzina zakończenia) — błąd 409 jeśli brak otwartego wpisu | dowolny zalogowany |
 | `POST /api/time-entries/log` | Rejestruje już zakończony wpis wprost (`clockIn`+`clockOut` obowiązkowe) — bez przechodzenia przez clock-in/clock-out "na żywo" | dowolny zalogowany |
-| `PUT /api/time-entries/{id}` | Poprawia godziny/przerwę/projekt istniejącego wpisu | właściciel wpisu / `MANAGER` / `HR` / `ADMIN` |
+| `PUT /api/time-entries/{id}` | Poprawia godziny/przerwę/projekt istniejącego wpisu | właściciel wpisu / `MANAGER` / `HR` (tylko własny zakład) / `ADMIN` |
 | `GET /api/time-entries/me` | Lista własnych wpisów | dowolny zalogowany |
 | `GET /api/time-entries/me/by-project` | Własny czas pracy zsumowany per projekt (tylko zamknięte wpisy) | dowolny zalogowany |
-| `GET /api/time-entries` | Wpisy **wszystkich** pracowników, wzbogacone o imię/nazwisko/e-mail (`ManagedTimeEntryView`) — do zakładki zarządzania zespołem | `MANAGER` / `HR` / `ADMIN` (bez ograniczenia do bezpośrednich podwładnych, w przeciwieństwie do wniosków urlopowych) |
+| `GET /api/time-entries` | Wpisy **wszystkich** pracowników, wzbogacone o imię/nazwisko/e-mail (`ManagedTimeEntryView`) — do zakładki zarządzania zespołem | `MANAGER` / `HR` (tylko własny zakład) / `ADMIN` |
 
 ```jsonc
 // POST /api/time-entries/clock-in
@@ -342,7 +344,8 @@ HR/MANAGER/ADMIN — podgląd i korekta wpisów wszystkich pracowników.
 // PUT /api/time-entries/5
 { "clockIn": "2026-08-03T08:00:00Z", "clockOut": "2026-08-03T15:30:00Z", "breakMinutes": 30, "projectId": null }
 // -> 200 <TimeEntryView>  |  400 gdy clockOut nie jest po clockIn  |  404 gdy wpis lub projekt nie istnieje
-//    403 gdy wywołujący nie jest właścicielem wpisu ani MANAGER/HR/ADMIN
+//    403 gdy wywołujący nie jest właścicielem wpisu ani MANAGER/HR/ADMIN, albo HR
+//        próbuje poprawić wpis pracownika spoza własnego zakładu
 
 // GET /api/time-entries/me/by-project
 // -> 200 [ { "projectId": 3, "projectName": "Kalendario", "totalMinutes": 960, "entryCount": 2 } ]
@@ -359,12 +362,12 @@ współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułam
 `api.project.ProjectExceptionHandler` (jeden `@RestControllerAdvice` obsługuje
 dany wyjątek niezależnie od tego, który kontroler go rzucił).
 
-**Uwaga o zakresie `GET /api/time-entries`.** W przeciwieństwie do wniosków
-urlopowych (gdzie `MANAGER` widzi tylko bezpośrednich podwładnych — patrz
-[Moduł: Leave Requests](#moduł-leave-requests-wnioski-urlopowe)),
-`ListManagedTimeEntriesUseCase` traktuje `MANAGER`/`HR`/`ADMIN` jednakowo i
-zwraca wpisy wszystkich pracowników — filtrowanie po zakładzie/zespole robi
-frontend (`AdminFacilitiesPage`), nie backend.
+**Uwaga o zakresie `GET /api/time-entries` i `PUT /api/time-entries/{id}`.**
+`MANAGER` i `ADMIN` mają wobec tych operacji równe, nieograniczone uprawnienia
+(bez ograniczenia `MANAGER`-a do bezpośrednich podwładnych, w przeciwieństwie
+do modułu Leave — patrz [Moduł: Leave Requests](#moduł-leave-requests-wnioski-urlopowe)).
+`HR` widzi i poprawia wyłącznie wpisy pracowników swojego zakładu
+(`application.common.FacilityScope`, patrz [Moduł: Zakłady](#moduł-zakłady-facility)).
 
 ## Moduł: Profil użytkownika
 
@@ -378,11 +381,22 @@ polem — liczone dynamicznie jako "czy istnieje użytkownik, którego
 nie trzeba było synchronizować dwóch źródeł prawdy przy zmianie struktury
 podległości.
 
+**Zakres uprawnień HR wg zakładu.** `HR` przypisany do zakładu (pole
+`facility`) widzi w `GET /api/users` i może edytować przez
+`PATCH /api/users/{id}/profile` **wyłącznie** pracowników swojego zakładu —
+albo pracowników jeszcze nieprzypisanych do żadnego zakładu (np. świeżo
+zatrudnionych, których może "przyjąć" do swojego zakładu). Nie może
+przenieść nikogo do innego zakładu niż własny. `ADMIN` nie podlega temu
+ograniczeniu — widzi i edytuje każdego pracownika, w każdym zakładzie.
+Reguła współdzielona przez moduły User/Leave/Time Tracking przez
+`application.common.FacilityScope` — patrz też
+[Moduł: Zakłady](#moduł-zakłady-facility).
+
 | Endpoint | Opis | Uprawnienia |
 |---|---|---|
 | `GET /api/users/me/profile` | Pełny profil zalogowanego użytkownika: dane organizacyjne, przełożony (id + imię i nazwisko), czy sam jest przełożonym, dane personalne, ostatnie logowanie | dowolny zalogowany |
-| `GET /api/users` | Lista wszystkich użytkowników (pełny profil każdego, posortowana po nazwisku/imieniu) — do panelu administracyjnego | `HR` / `ADMIN` |
-| `PATCH /api/users/{id}/profile` | Ustawia stanowisko/dział/zakład/przełożonego wskazanego użytkownika | `HR` / `ADMIN` |
+| `GET /api/users` | Lista wszystkich użytkowników (pełny profil każdego, posortowana po nazwisku/imieniu) — do panelu administracyjnego. `HR` widzi tylko swój zakład | `HR` / `ADMIN` |
+| `PATCH /api/users/{id}/profile` | Ustawia stanowisko/dział/zakład/przełożonego wskazanego użytkownika. `HR` — tylko w obrębie własnego zakładu | `HR` / `ADMIN` |
 | `PATCH /api/users/{id}/role` | Zmienia rolę wskazanego użytkownika (`EMPLOYEE`/`MANAGER`/`HR`/`ADMIN`) | `ADMIN` |
 | `PATCH /api/users/me/personal-info` | Ustawia własną datę urodzenia/telefon/awatar | dowolny zalogowany (tylko dla siebie) |
 
@@ -402,7 +416,9 @@ podległości.
 // PATCH /api/users/{id}/profile (wymaga HR lub ADMIN)
 { "position": "Programista", "department": "IT", "facility": "Warszawa", "supervisorId": 2 }
 // -> 200 <UserProfileView>  |  400 gdy supervisorId == id (nie można być swoim przełożonym)
-//    403 gdy wywołujący nie jest HR/ADMIN  |  404 gdy użytkownik lub przełożony nie istnieje
+//    403 gdy wywołujący nie jest HR/ADMIN, albo HR próbuje edytować/przenieść kogoś
+//        spoza własnego zakładu  |  404 gdy użytkownik/przełożony nie istnieje, albo
+//        `facility` nie odpowiada żadnemu zakładowi z listy (patrz Moduł: Zakłady)
 
 // PATCH /api/users/{id}/role (wymaga ADMIN)
 { "role": "MANAGER" }
@@ -421,6 +437,62 @@ stąd `ForbiddenRoleChangeException` zamiast dzielenia wyjątku z resztą
 profilu. Błędy mapowane w `GlobalExceptionHandler` (ten moduł nie ma własnego
 handlera — analogicznie do `EmailAlreadyExistsException`/`InvalidCredentialsException`,
 wyjątki `domain.user.exception` trafiają tam).
+
+## Moduł: Zakłady (Facility)
+
+Tabela `facilities` (id, `name` unique, `createdAt`) — lekki, płaski słownik
+zakładów/lokalizacji firmy, analogicznie do `projects`. Wcześniej `User.facility`
+był dowolnym tekstem wpisywanym ręcznie przy edycji profilu (bez żadnej
+wspólnej listy); teraz to pole nadal jest zwykłym `String` w `users` (bez
+klucza obcego — celowo, żeby nie robić migracji istniejących danych), ale
+`UpdateUserOrganizationUseCase` waliduje, że podana wartość odpowiada
+istniejącemu zakładowi z tej tabeli (`FacilityNotFoundException`, jeśli nie).
+
+| Endpoint | Opis | Uprawnienia |
+|---|---|---|
+| `GET /api/facilities` | Lista wszystkich zakładów, alfabetycznie | dowolny zalogowany (żeby wybrać zakład w formularzu edycji profilu) |
+| `POST /api/facilities` | Tworzy nowy zakład (nazwa musi być unikalna) | `ADMIN` |
+| `PUT /api/facilities/{id}` | Zmienia nazwę zakładu | `ADMIN` |
+| `DELETE /api/facilities/{id}` | Usuwa zakład — zablokowane (409), dopóki są do niego przypisani pracownicy | `ADMIN` |
+
+```jsonc
+// POST /api/facilities (wymaga ADMIN)
+{ "name": "Warszawa" }
+// -> 201 { "id": 1, "name": "Warszawa", "createdAt": "..." }
+// -> 409 gdy nazwa już istnieje  |  403 gdy wywołujący nie jest ADMIN
+
+// PUT /api/facilities/1 (wymaga ADMIN)
+{ "name": "Warszawa Centrum" }
+// -> 200 <FacilityView>  |  409 gdy inna nazwa już istnieje  |  404 gdy zakład nie istnieje
+
+// DELETE /api/facilities/1 (wymaga ADMIN)
+// -> 204  |  409 gdy są przypisani pracownicy  |  404 gdy zakład nie istnieje
+```
+
+Zmiana nazwy (`PUT`) kaskadowo aktualizuje `facility` u wszystkich pracowników,
+którzy mieli przypisaną starą nazwę (`UserRepository.findByFacility`) — inaczej
+zostaliby z wartością spoza aktualnej listy zakładów i przestaliby się pojawiać
+w filtrach opartych na tej liście. Błędy mapowane przez dedykowany
+`api.facility.FacilityExceptionHandler`.
+
+**Zakres uprawnień HR wg zakładu — współdzielona reguła.**
+`application.common.FacilityScope` to mały, współdzielony helper (nie
+kolejny moduł Ports & Adapters — po prostu statyczne metody nad
+`UserRepository`) używany przez User/Leave/Time Tracking wszędzie tam, gdzie
+`HR` filtruje albo zatwierdza/edytuje coś dotyczącego innego pracownika:
+
+- `GET /api/users`, `GET /api/leave-requests/pending`, `GET /api/time-entries`
+  — `HR` widzi tylko wpisy/pracowników swojego zakładu.
+- `PATCH /api/users/{id}/profile`, `PATCH /api/leave-requests/{id}/approve`,
+  `PATCH /api/leave-requests/{id}/reject`, `PUT /api/time-entries/{id}` — `HR`
+  może działać tylko na pracownikach/wnioskach/wpisach swojego zakładu (albo,
+  w przypadku edycji profilu, na kimś jeszcze nieprzypisanym do żadnego
+  zakładu — patrz [Moduł: Profil użytkownika](#moduł-profil-użytkownika)).
+
+`MANAGER` nie podlega tej regule (ma własne, węższe ograniczenie — tylko
+bezpośredni podwładni, w module Leave) i `ADMIN` też nie podlega — widzi i
+zarządza wszystkimi zakładami. HR bez przypisanego zakładu widzi/zarządza
+tylko innymi pracownikami też bez zakładu.
 
 ## Moduł: Powiadomienia
 
@@ -505,11 +577,11 @@ Błędy mapowane przez dedykowany `api.project.ProjectExceptionHandler`.
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
 | `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest`, `NotificationTest`, `ProjectTest`, `AnnualLeaveLimitPolicyTest` |
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ClockOutUseCaseTest`, `ListMyLeaveRequestsUseCaseTest`, `ListMyTimeEntriesUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `ListManagedTimeEntriesUseCaseTest`, `LogTimeEntryUseCaseTest`, `UpdateTimeEntryUseCaseTest`, `GetAnnualLeaveSummaryUseCaseTest`, `GetMyProfileUseCaseTest`, `ListAllUsersUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateUserRoleUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest`, `CreateProjectUseCaseTest`, `ListProjectsUseCaseTest`, `GetProjectTimeSummaryUseCaseTest`, `ListMyTimeByProjectUseCaseTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ClockOutUseCaseTest`, `ListMyLeaveRequestsUseCaseTest`, `ListMyTimeEntriesUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `ListManagedTimeEntriesUseCaseTest`, `LogTimeEntryUseCaseTest`, `UpdateTimeEntryUseCaseTest`, `GetAnnualLeaveSummaryUseCaseTest`, `GetMyProfileUseCaseTest`, `ListAllUsersUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateUserRoleUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest`, `CreateProjectUseCaseTest`, `ListProjectsUseCaseTest`, `GetProjectTimeSummaryUseCaseTest`, `ListMyTimeByProjectUseCaseTest`, `CreateFacilityUseCaseTest`, `ListFacilitiesUseCaseTest`, `UpdateFacilityUseCaseTest`, `DeleteFacilityUseCaseTest` |
 | `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest`, `NotificationRepositoryAdapterTest`, `ProjectRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
 | `infrastructure.email` | Unit (bez Springa) | `LoggingEmailSenderTest` |
-| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest`, `NotificationControllerTest`, `ProjectControllerTest` |
+| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest`, `NotificationControllerTest`, `ProjectControllerTest`, `FacilityControllerTest` |
 
 Uwaga: e-maile testowe w każdej klasie `@SpringBootTest` muszą być unikalne w
 całym module — Spring cache'uje kontekst (i bazę H2) między klasami testów o
@@ -540,5 +612,6 @@ pominięciem endpointu rejestracji.
 | Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony) | ✅ |
 | Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ |
 | Lista wszystkich użytkowników i zmiana roli (`GET /api/users`, `PATCH /api/users/{id}/role`) | ✅ |
+| Zakłady jako encja + CRUD (`/api/facilities`) i zakres uprawnień HR wg zakładu (User/Leave/Time Tracking) | ✅ |
 | Powiadomienia w aplikacji o decyzji na wniosku | ✅ |
 | Powiadomienia mailowe o decyzji na wniosku (feature-flag `app.mail.enabled`) | ✅ |

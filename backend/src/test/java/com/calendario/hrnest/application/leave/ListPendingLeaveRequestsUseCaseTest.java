@@ -39,17 +39,51 @@ class ListPendingLeaveRequestsUseCaseTest {
     }
 
     @Test
-    void execute_asHr_returnsAllPendingRequests() {
-        LeaveRequest reporteeRequest = LeaveRequest.create(
+    void execute_asHr_returnsAllPendingRequests_forOwnFacility() {
+        LeaveRequest requestA = LeaveRequest.create(
                 1L, LeaveType.VACATION, LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), null);
-        LeaveRequest strangerRequest = LeaveRequest.create(
+        LeaveRequest requestB = LeaveRequest.create(
                 2L, LeaveType.VACATION, LocalDate.of(2026, 8, 4), LocalDate.of(2026, 8, 4), null);
+        User hr = User.reconstitute(5L, "hr@example.com", "hash", "Ala", "Kadrowa", Role.HR, Instant.now());
+        User requesterA = User.reconstitute(1L, "a@example.com", "hash", "A", "A", Role.EMPLOYEE, Instant.now());
+        User requesterB = User.reconstitute(2L, "b@example.com", "hash", "B", "B", Role.EMPLOYEE, Instant.now());
 
         when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(currentUserProvider.currentUserId()).thenReturn(5L);
         when(leaveRequestRepository.findByStatus(LeaveStatus.PENDING))
-                .thenReturn(List.of(reporteeRequest, strangerRequest));
+                .thenReturn(List.of(requestA, requestB));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(hr));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requesterA));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(requesterB));
 
         assertThat(useCase().execute()).hasSize(2);
+    }
+
+    @Test
+    void execute_asHr_onlyReturnsRequestsFromOwnFacility() {
+        LeaveRequest sameFacilityRequest = LeaveRequest.create(
+                1L, LeaveType.VACATION, LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), null);
+        LeaveRequest otherFacilityRequest = LeaveRequest.create(
+                2L, LeaveType.VACATION, LocalDate.of(2026, 8, 4), LocalDate.of(2026, 8, 4), null);
+        User hr = User.reconstitute(5L, "hr@example.com", "hash", "Ala", "Kadrowa", Role.HR,
+                null, null, "Warszawa", null, Instant.now());
+        User sameFacilityRequester = User.reconstitute(1L, "a@example.com", "hash", "A", "A", Role.EMPLOYEE,
+                null, null, "Warszawa", null, Instant.now());
+        User otherFacilityRequester = User.reconstitute(2L, "b@example.com", "hash", "B", "B", Role.EMPLOYEE,
+                null, null, "Krakow", null, Instant.now());
+
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
+        when(currentUserProvider.currentUserId()).thenReturn(5L);
+        when(leaveRequestRepository.findByStatus(LeaveStatus.PENDING))
+                .thenReturn(List.of(sameFacilityRequest, otherFacilityRequest));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(hr));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sameFacilityRequester));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(otherFacilityRequester));
+
+        List<LeaveRequestView> result = useCase().execute();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).requesterId()).isEqualTo(1L);
     }
 
     @Test

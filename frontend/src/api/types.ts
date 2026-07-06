@@ -175,6 +175,12 @@ export interface ProjectTimeSummary {
   entryCount: number
 }
 
+export interface Facility {
+  id: number
+  name: string
+  createdAt: string
+}
+
 export class ApiError extends Error {
   status: number
 

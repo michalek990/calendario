@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABELS } from '../auth/jwt'
+import { listFacilities } from '../api/facilities'
 import { getMyProfile, updateMyPersonalInfo, updateUserOrganization } from '../api/users'
 import { ApiError } from '../api/types'
-import type { UserProfile } from '../api/types'
+import type { Facility, UserProfile } from '../api/types'
 
 function formatDateTime(value: string | null): string {
   return value ? new Date(value).toLocaleString() : '—'
@@ -30,6 +31,7 @@ export function ProfilePage() {
   const [orgError, setOrgError] = useState<string | null>(null)
   const [orgSuccess, setOrgSuccess] = useState<string | null>(null)
   const [isSavingOrg, setIsSavingOrg] = useState(false)
+  const [facilities, setFacilities] = useState<Facility[]>([])
 
   const loadProfile = async () => {
     if (!token) return
@@ -49,6 +51,16 @@ export function ProfilePage() {
 
   useEffect(() => {
     loadProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
+  useEffect(() => {
+    if (!token || !hasAnyRole('HR', 'ADMIN')) return
+    listFacilities(token)
+      .then(setFacilities)
+      .catch(() => {
+        // brak listy zakładów nie powinien blokować reszty formularza
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
@@ -235,7 +247,14 @@ export function ProfilePage() {
             />
 
             <label htmlFor="orgFacility">Zakład</label>
-            <input id="orgFacility" type="text" value={orgFacility} onChange={(e) => setOrgFacility(e.target.value)} />
+            <select id="orgFacility" value={orgFacility} onChange={(e) => setOrgFacility(e.target.value)}>
+              <option value="">Brak</option>
+              {facilities.map((facility) => (
+                <option key={facility.id} value={facility.name}>
+                  {facility.name}
+                </option>
+              ))}
+            </select>
 
             <label htmlFor="orgSupervisorId">Id przełożonego (opcjonalnie)</label>
             <input
