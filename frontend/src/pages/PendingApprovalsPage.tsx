@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext'
 import { approveLeaveRequest, listPendingLeaveRequests, rejectLeaveRequest } from '../api/leave'
 import { ApiError } from '../api/types'
 import type { LeaveRequest } from '../api/types'
+import { LEAVE_TYPE_LABELS } from '../constants/labels'
 
 export function PendingApprovalsPage() {
   const { token } = useAuth()
@@ -69,7 +70,7 @@ export function PendingApprovalsPage() {
             {requests.map((request) => (
               <tr key={request.id}>
                 <td>#{request.requesterId}</td>
-                <td>{request.type}</td>
+                <td>{LEAVE_TYPE_LABELS[request.type]}</td>
                 <td>{request.startDate}</td>
                 <td>{request.endDate}</td>
                 <td>{request.daysCount}</td>

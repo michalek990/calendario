@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { clockIn, clockOut, listMyTimeEntries } from '../api/timeEntries'
+import { clockIn, clockOut, listMyTimeByProject, listMyTimeEntries } from '../api/timeEntries'
+import { listProjects } from '../api/projects'
 import { ApiError } from '../api/types'
-import type { TimeEntry } from '../api/types'
+import type { Project, ProjectTimeSummary, TimeEntry } from '../api/types'
 
 function formatDateTime(value: string | null): string {
   return value ? new Date(value).toLocaleString() : '—'
@@ -18,9 +19,14 @@ function formatMinutes(value: number | null): string {
 export function TimeTrackingPage() {
   const { token } = useAuth()
   const [entries, setEntries] = useState<TimeEntry[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [byProject, setByProject] = useState<ProjectTimeSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+
+  const projectNameById = new Map(projects.map((project) => [project.id, project.name]))
 
   const loadEntries = async () => {
     if (!token) return
@@ -34,8 +40,28 @@ export function TimeTrackingPage() {
     }
   }
 
+  const loadProjects = async () => {
+    if (!token) return
+    try {
+      setProjects(await listProjects(token))
+    } catch {
+      // brak listy projektów nie blokuje rejestracji czasu bez projektu
+    }
+  }
+
+  const loadByProject = async () => {
+    if (!token) return
+    try {
+      setByProject(await listMyTimeByProject(token))
+    } catch {
+      // podsumowanie per projekt jest dodatkiem, nie blokuje reszty strony
+    }
+  }
+
   useEffect(() => {
     loadEntries()
+    loadProjects()
+    loadByProject()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
@@ -46,7 +72,7 @@ export function TimeTrackingPage() {
     setError(null)
     setIsSubmitting(true)
     try {
-      await clockIn(token)
+      await clockIn(token, selectedProjectId ? Number(selectedProjectId) : undefined)
       await loadEntries()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Nie udało się rozpocząć pracy')
@@ -62,6 +88,7 @@ export function TimeTrackingPage() {
     try {
       await clockOut(token)
       await loadEntries()
+      await loadByProject()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Nie udało się zakończyć pracy')
     } finally {
@@ -80,9 +107,30 @@ export function TimeTrackingPage() {
           {openEntry ? (
             <p>
               Pracujesz od <strong>{formatDateTime(openEntry.clockIn)}</strong>
+              {openEntry.projectId && (
+                <>
+                  {' '}
+                  nad projektem <strong>{projectNameById.get(openEntry.projectId) ?? `#${openEntry.projectId}`}</strong>
+                </>
+              )}
             </p>
           ) : (
-            <p>Nie masz obecnie otwartego wpisu czasu pracy.</p>
+            <>
+              <p>Nie masz obecnie otwartego wpisu czasu pracy.</p>
+              <label htmlFor="projectSelect">Projekt (opcjonalnie)</label>
+              <select
+                id="projectSelect"
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+              >
+                <option value="">Brak projektu</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </>
           )}
 
           {error && <p className="auth-error">{error}</p>}
@@ -99,6 +147,23 @@ export function TimeTrackingPage() {
         </div>
       </div>
 
+      {byProject.length > 0 && (
+        <section className="list-section">
+          <h2>Twój czas w projektach</h2>
+          <ul className="record-list">
+            {byProject.map((entry) => (
+              <li key={entry.projectId} className="record-list-item">
+                <div className="record-list-main">
+                  <strong>{entry.projectName}</strong>
+                  <span>{entry.entryCount} wpisów</span>
+                </div>
+                <span className="status-badge status-approved">{formatMinutes(entry.totalMinutes)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="list-section">
         <h2>Twoje wpisy</h2>
 
@@ -113,6 +178,11 @@ export function TimeTrackingPage() {
                 <div className="record-list-main">
                   <strong>{formatDateTime(entry.clockIn)}</strong>
                   <span>do {formatDateTime(entry.clockOut)}</span>
+                  {entry.projectId && (
+                    <span className="record-list-reason">
+                      Projekt: {projectNameById.get(entry.projectId) ?? `#${entry.projectId}`}
+                    </span>
+                  )}
                   {entry.breakMinutes > 0 && <span className="record-list-reason">Przerwa: {entry.breakMinutes} min</span>}
                 </div>
                 <span className="status-badge status-approved">{formatMinutes(entry.totalMinutes)}</span>

@@ -1,20 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { listMyLeaveRequests } from '../api/leave'
+import { ROLE_LABELS } from '../auth/jwt'
+import { listMyLeaveRequests, listRecentLeaveActivity } from '../api/leave'
 import { listMyTimeEntries } from '../api/timeEntries'
 import { ApiError } from '../api/types'
+import type { LeaveRequest } from '../api/types'
 import { MonthCalendar, type DayStatus } from '../components/MonthCalendar'
 import { eachIsoDateInRange, toIsoDate } from '../utils/calendar'
-
-const ROLE_LABELS: Record<string, string> = {
-  EMPLOYEE: 'Pracownik',
-  MANAGER: 'Kierownik',
-  HR_ADMIN: 'Administrator HR',
-}
+import { LEAVE_TYPE_LABELS, STATUS_LABELS } from '../constants/labels'
 
 export function DashboardPage() {
   const { token, firstName, lastName, role } = useAuth()
   const [dayStatus, setDayStatus] = useState<Record<string, DayStatus>>({})
+  const [recentActivity, setRecentActivity] = useState<LeaveRequest[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const today = useMemo(() => new Date(), [])
@@ -51,7 +49,16 @@ export function DashboardPage() {
       }
     }
 
+    async function loadRecentActivity() {
+      try {
+        setRecentActivity(await listRecentLeaveActivity(token as string))
+      } catch {
+        // ostatnie zmiany to dodatek — brak nie powinien blokować pulpitu
+      }
+    }
+
     loadMonthData()
+    loadRecentActivity()
   }, [token])
 
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : null
@@ -65,7 +72,28 @@ export function DashboardPage() {
 
       <MonthCalendar year={year} month={month} dayStatus={dayStatus} />
 
-      <p>Wybierz moduł z menu powyżej — Urlopy albo Czas pracy.</p>
+      {recentActivity.length > 0 && (
+        <section className="list-section">
+          <h2>Ostatnie zmiany na wnioskach</h2>
+          <ul className="record-list">
+            {recentActivity.map((request) => (
+              <li key={request.id} className="record-list-item">
+                <div className="record-list-main">
+                  <strong>{LEAVE_TYPE_LABELS[request.type]}</strong>
+                  <span>
+                    {request.startDate} → {request.endDate}
+                  </span>
+                </div>
+                <span className={`status-badge status-${request.status.toLowerCase()}`}>
+                  {STATUS_LABELS[request.status]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <p>Wybierz moduł z menu powyżej — Urlopy, Czas pracy albo Projekty.</p>
     </div>
   )
 }

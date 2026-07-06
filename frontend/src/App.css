@@ -629,3 +629,53 @@ tr:last-child td {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.profile-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.65;
+}
+
+.profile-hint {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+  margin: 0 0 12px;
+}
+
+.avatar-preview {
+  margin-top: 8px;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+
+.record-list-item-unread {
+  border-left: 4px solid var(--yellow);
+}
+
+.record-list-item-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.project-summary {
+  display: flex;
+  align-items: center;
+}

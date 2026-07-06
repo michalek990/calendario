@@ -21,16 +21,16 @@ Calendario/
 | Moduł | Backend | Frontend |
 |---|---|---|
 | Users / Auth (register, login, zmiana hasła) | ✅ | ✅ (logowanie/rejestracja, popup profilu w navbarze, zmiana hasła w ustawieniach) |
-| Role EMPLOYEE / MANAGER / HR / ADMIN | ✅ | — (rola widoczna w JWT, ale bez UI do zarządzania rolami) |
-| Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony/podwładny) | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-profil-użytkownika)) |
-| Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ | — (na razie tylko API) |
-| Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR/ADMIN, widoczne na kalendarzu pulpitu — nowe typy wniosków wymagają dodania ich do frontendu) |
-| Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy pracownik | ✅ | ✅ (frontend woła te same endpointy, backend teraz dodatkowo weryfikuje zakres) |
-| Roczny limit urlopu wypoczynkowego (26 dni) i roczne podsumowanie (praca zdalna vs pozostałe) | ✅ | — (na razie tylko API) |
-| Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ | — (na razie tylko API) |
-| Powiadomienia w aplikacji i mailem o decyzji na wniosku | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-powiadomienia)) |
-| Time Tracking (czas pracy) | ✅ | ✅ (wyśrodkowana karta rozpocznij/zakończ pracę, lista własnych wpisów, widoczne na kalendarzu pulpitu — bez UI do wyboru projektu) |
-| Projekty + rejestrowanie czasu w projekcie + podsumowania | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-projekty)) |
+| Role EMPLOYEE / MANAGER / HR / ADMIN | ✅ | ✅ (etykiety roli w UI; bez ekranu do nadawania ról — na razie robione w bazie, patrz [frontend/README.md](frontend/README.md#role-employee--manager--hr--admin)) |
+| Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony/podwładny) | ✅ | ✅ (`/profile`: podgląd własnych danych; HR/ADMIN może edytować dane innego pracownika po id) |
+| Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ | ✅ (`/profile`: podgląd i edycja własnych danych) |
+| Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (formularz nowego wniosku ze wszystkimi typami, lista własnych, zatwierdź/odrzuć dla MANAGER/HR/ADMIN, widoczne na kalendarzu pulpitu) |
+| Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy pracownik | ✅ | ✅ (frontend woła te same endpointy, backend dodatkowo weryfikuje zakres) |
+| Roczny limit urlopu wypoczynkowego (26 dni) i roczne podsumowanie (praca zdalna vs pozostałe) | ✅ | ✅ (widget podsumowania rocznego na `/leave-requests`) |
+| Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ | ✅ (widget na pulpicie) |
+| Powiadomienia w aplikacji i mailem o decyzji na wniosku | ✅ | ✅ (`/notifications` + licznik nieprzeczytanych w navbarze; e-mail jest tylko backendowy z natury) |
+| Time Tracking (czas pracy) | ✅ | ✅ (rozpocznij/zakończ pracę z wyborem projektu, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
+| Projekty + rejestrowanie czasu w projekcie + podsumowania | ✅ | ✅ (`/projects`: lista, tworzenie dla HR/ADMIN, własne i zespołowe podsumowanie czasu) |
 | Ustawienia wyglądu (dark mode, czcionka, kolor wiodący) | — | ✅ (czysto frontendowe, `localStorage`) |
 
 Nawigacja frontendu w domyślnej kolorystyce jasny niebieski/biel/żółty,
@@ -59,6 +59,26 @@ zmienną środowiskową w `docker-compose.yml`), więc schemat tabel tworzy się
 automatycznie przy pierwszym starcie — bez ręcznych migracji. `JWT_SECRET`
 można nadpisać zmienną środowiskową hosta przed odpaleniem; domyślny sekret
 jest tylko na potrzeby dev/testów.
+
+**Uwaga przy aktualizacji istniejącego wolumenu Postgresa.** `ddl-auto=update`
+dodaje nowe kolumny/tabele, ale **nie aktualizuje** CHECK constraints
+wygenerowanych przez Hibernate dla kolumn enumowych (`users.role`,
+`leave_requests.type`). Jeśli wolumen `postgres-data` istniał już przed
+rozszerzeniem `Role` (o `HR`/`ADMIN`) i `LeaveType` (o nowe typy wniosków),
+baza nadal ma stary constraint i odrzuci próbę zapisania nowej wartości
+(`23514` — `violates check constraint`). Jednorazowa naprawa istniejącego
+wolumenu (bez utraty danych):
+```sql
+ALTER TABLE users DROP CONSTRAINT users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('EMPLOYEE','MANAGER','HR','ADMIN'));
+
+ALTER TABLE leave_requests DROP CONSTRAINT leave_requests_type_check;
+ALTER TABLE leave_requests ADD CONSTRAINT leave_requests_type_check
+  CHECK (type IN ('VACATION','ON_DEMAND','SICK_LEAVE','UNPAID','CHILDCARE_UNPAID',
+                   'OCCASIONAL','REMOTE_WORK','HOLIDAY_COMPENSATION','BUSINESS_TRIP','OTHER'));
+```
+Wolumeny utworzone od zera po tych zmianach (albo `docker compose down -v` +
+`up`) nie mają tego problemu — Hibernate generuje constraint z aktualnego enuma.
 
 Powiadomienia mailowe o decyzjach na wnioskach są domyślnie wyłączone
 (`MAIL_ENABLED=false`) — aplikacja loguje treść zamiast wysyłać. Żeby włączyć

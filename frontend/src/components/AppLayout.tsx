@@ -1,10 +1,31 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { listMyNotifications } from '../api/notifications'
 import { UserAvatarMenu } from './UserAvatarMenu'
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { logout, hasAnyRole } = useAuth()
+  const { token, logout, hasAnyRole } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+
+    listMyNotifications(token)
+      .then((notifications) => {
+        if (!cancelled) {
+          setUnreadCount(notifications.filter((n) => !n.read).length)
+        }
+      })
+      .catch(() => {
+        // brak powiadomień nie powinien blokować reszty layoutu
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   return (
     <div className="app-layout">
@@ -14,9 +35,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <NavLink to="/dashboard">Pulpit</NavLink>
           <NavLink to="/time-tracking">Rejestracja czasu pracy</NavLink>
           <NavLink to="/leave-requests">Wnioski urlopowe</NavLink>
-          {hasAnyRole('MANAGER', 'HR_ADMIN') && (
+          {hasAnyRole('MANAGER', 'HR', 'ADMIN') && (
             <NavLink to="/leave-requests/pending">Do zatwierdzenia</NavLink>
           )}
+          <NavLink to="/projects">Projekty</NavLink>
+          <NavLink to="/notifications">
+            Powiadomienia{unreadCount > 0 ? ` (${unreadCount})` : ''}
+          </NavLink>
+          <NavLink to="/profile">Profil</NavLink>
           <NavLink to="/settings">Ustawienia</NavLink>
         </nav>
         <div className="app-header-user">

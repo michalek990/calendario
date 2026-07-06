@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-
-const ROLE_LABELS: Record<string, string> = {
-  EMPLOYEE: 'Pracownik',
-  MANAGER: 'Kierownik',
-  HR_ADMIN: 'Administrator HR',
-}
+import { ROLE_LABELS } from '../auth/jwt'
 
 export function UserAvatarMenu() {
   const { firstName, lastName, email, role } = useAuth()
@@ -41,6 +37,9 @@ export function UserAvatarMenu() {
           <p className="avatar-popup-name">{displayName}</p>
           <p className="avatar-popup-email">{email}</p>
           <p className="avatar-popup-role">{role ? (ROLE_LABELS[role] ?? role) : '—'}</p>
+          <Link to="/profile" onClick={() => setIsOpen(false)}>
+            Zobacz profil
+          </Link>
         </div>
       )}
     </div>

@@ -1,4 +1,11 @@
-export type Role = 'EMPLOYEE' | 'MANAGER' | 'HR_ADMIN'
+export type Role = 'EMPLOYEE' | 'MANAGER' | 'HR' | 'ADMIN'
+
+export const ROLE_LABELS: Record<Role, string> = {
+  EMPLOYEE: 'Pracownik',
+  MANAGER: 'Przełożony',
+  HR: 'Dział kadr',
+  ADMIN: 'Administrator',
+}
 
 interface JwtPayload {
   sub?: string

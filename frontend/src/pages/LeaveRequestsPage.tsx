@@ -1,28 +1,17 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { createLeaveRequest, listMyLeaveRequests } from '../api/leave'
+import { createLeaveRequest, getMyAnnualLeaveSummary, listMyLeaveRequests } from '../api/leave'
 import { ApiError } from '../api/types'
-import type { LeaveRequest, LeaveType } from '../api/types'
-
-const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  VACATION: 'Urlop wypoczynkowy',
-  SICK_LEAVE: 'Zwolnienie lekarskie',
-  UNPAID: 'Urlop bezpłatny',
-  OTHER: 'Inny',
-}
-
-const STATUS_LABELS: Record<LeaveRequest['status'], string> = {
-  PENDING: 'Oczekuje',
-  APPROVED: 'Zatwierdzony',
-  REJECTED: 'Odrzucony',
-  CANCELLED: 'Anulowany',
-}
+import type { AnnualLeaveSummary, LeaveRequest, LeaveType } from '../api/types'
+import { LEAVE_TYPE_LABELS, STATUS_LABELS } from '../constants/labels'
 
 export function LeaveRequestsPage() {
   const { token } = useAuth()
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [summary, setSummary] = useState<AnnualLeaveSummary | null>(null)
 
   const [type, setType] = useState<LeaveType>('VACATION')
   const [startDate, setStartDate] = useState('')
@@ -42,8 +31,18 @@ export function LeaveRequestsPage() {
     }
   }
 
+  const loadSummary = async () => {
+    if (!token) return
+    try {
+      setSummary(await getMyAnnualLeaveSummary(token))
+    } catch {
+      // brak podsumowania rocznego nie powinien blokować reszty strony
+    }
+  }
+
   useEffect(() => {
     loadRequests()
+    loadSummary()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
@@ -58,6 +57,7 @@ export function LeaveRequestsPage() {
       setEndDate('')
       setReason('')
       await loadRequests()
+      await loadSummary()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Nie udało się złożyć wniosku')
     } finally {
@@ -68,6 +68,32 @@ export function LeaveRequestsPage() {
   return (
     <div>
       <h1>Wnioski urlopowe</h1>
+
+      {summary && (
+        <section className="settings-section">
+          <h2>Podsumowanie roczne ({summary.year})</h2>
+          <div className="profile-grid">
+            <div>
+              <span className="profile-label">Praca z domu</span>
+              <span>{summary.remoteWorkDays} dni</span>
+            </div>
+            <div>
+              <span className="profile-label">Pozostałe nieobecności</span>
+              <span>{summary.otherLeaveDays} dni</span>
+            </div>
+            <div>
+              <span className="profile-label">Urlop wypoczynkowy — wykorzystano</span>
+              <span>
+                {summary.vacationDaysUsed} / {summary.vacationAnnualLimit} dni
+              </span>
+            </div>
+            <div>
+              <span className="profile-label">Urlop wypoczynkowy — pozostało</span>
+              <span>{summary.vacationDaysRemaining} dni</span>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="centered-form-wrapper">
         <form className="card-form" onSubmit={handleSubmit}>

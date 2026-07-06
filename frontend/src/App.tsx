@@ -5,6 +5,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { LeaveRequestsPage } from './pages/LeaveRequestsPage'
 import { PendingApprovalsPage } from './pages/PendingApprovalsPage'
 import { TimeTrackingPage } from './pages/TimeTrackingPage'
+import { ProjectsPage } from './pages/ProjectsPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import './App.css'
@@ -34,7 +37,7 @@ function App() {
       <Route
         path="/leave-requests/pending"
         element={
-          <ProtectedRoute allowedRoles={['MANAGER', 'HR_ADMIN']}>
+          <ProtectedRoute allowedRoles={['MANAGER', 'HR', 'ADMIN']}>
             <PendingApprovalsPage />
           </ProtectedRoute>
         }
@@ -44,6 +47,30 @@ function App() {
         element={
           <ProtectedRoute>
             <TimeTrackingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects"
+        element={
+          <ProtectedRoute>
+            <ProjectsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <NotificationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

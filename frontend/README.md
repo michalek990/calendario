@@ -38,20 +38,25 @@ wymagają przeładowania strony.
 ```
 src/
 ├── api/
-│   ├── client.ts        # fetch wrapper (GET/POST/PATCH, Bearer token, mapowanie błędów)
-│   ├── auth.ts           # register()/login()/changePassword()
-│   ├── leave.ts          # create/list/approve/reject wniosków urlopowych
-│   ├── timeEntries.ts    # clockIn()/clockOut()/listMyTimeEntries()
-│   └── types.ts          # DTO + ApiError
+│   ├── client.ts          # fetch wrapper (GET/POST/PATCH, Bearer token, mapowanie błędów)
+│   ├── auth.ts             # register()/login()/changePassword()
+│   ├── leave.ts            # create/list/approve/reject + recent-activity + annual-summary
+│   ├── timeEntries.ts      # clockIn(projectId?)/clockOut()/listMyTimeEntries()/listMyTimeByProject()
+│   ├── users.ts            # getMyProfile()/updateMyPersonalInfo()/updateUserOrganization()
+│   ├── notifications.ts    # listMyNotifications()/markNotificationAsRead()
+│   ├── projects.ts         # listProjects()/createProject()/getProjectTimeSummary()
+│   └── types.ts            # DTO + ApiError
 ├── auth/
 │   ├── AuthContext.tsx   # token w localStorage, email/rola/imię+nazwisko z payloadu JWT, hasAnyRole()
-│   └── jwt.ts             # dekodowanie payloadu JWT (sub, role, firstName, lastName, exp)
+│   └── jwt.ts             # Role (EMPLOYEE/MANAGER/HR/ADMIN), dekodowanie JWT, ROLE_LABELS
+├── constants/
+│   └── labels.ts          # LEAVE_TYPE_LABELS / STATUS_LABELS / NOTIFICATION_TYPE_LABELS — współdzielone między stronami
 ├── settings/
 │   ├── SettingsContext.tsx # tryb ciemny, rozmiar czcionki, kolor wiodący — trwałe w localStorage
 │   └── colorPresets.ts     # 5 presetów koloru wiodącego + mapowanie rozmiarów czcionki na px
 ├── components/
-│   ├── AppLayout.tsx        # nagłówek z nawigacją (linki zależne od roli) + UserAvatarMenu + wylogowanie
-│   ├── UserAvatarMenu.tsx   # kółko z inicjałami w prawym górnym rogu — popup z danymi profilu (nie osobna strona)
+│   ├── AppLayout.tsx        # nagłówek z nawigacją (linki zależne od roli), licznik nieprzeczytanych powiadomień, UserAvatarMenu
+│   ├── UserAvatarMenu.tsx   # kółko z inicjałami — popup z danymi profilu + link do `/profile`
 │   ├── MonthCalendar.tsx    # siatka bieżącego miesiąca z oznaczonymi dniami
 │   └── ProtectedRoute.tsx   # wymaga tokenu; opcjonalnie `allowedRoles`
 ├── utils/
@@ -59,10 +64,13 @@ src/
 └── pages/
     ├── LoginPage.tsx
     ├── RegisterPage.tsx
-    ├── DashboardPage.tsx        # powitanie, rola, kalendarz miesiąca
-    ├── LeaveRequestsPage.tsx    # wyśrodkowany formularz nowego wniosku (karta) + lista własnych poniżej
-    ├── PendingApprovalsPage.tsx # lista PENDING + zatwierdź/odrzuć (MANAGER/HR_ADMIN)
-    ├── TimeTrackingPage.tsx     # wyśrodkowana karta rejestracji czasu (rozpocznij/zakończ) + lista wpisów poniżej
+    ├── DashboardPage.tsx        # powitanie, rola, kalendarz miesiąca, ostatnie zmiany na wnioskach
+    ├── LeaveRequestsPage.tsx    # podsumowanie roczne (praca zdalna vs reszta, limit 26 dni) + formularz nowego wniosku + lista własnych
+    ├── PendingApprovalsPage.tsx # lista PENDING + zatwierdź/odrzuć (MANAGER — tylko podwładni / HR / ADMIN)
+    ├── TimeTrackingPage.tsx     # rozpocznij/zakończ pracę z wyborem projektu + własne podsumowanie per projekt + lista wpisów
+    ├── ProjectsPage.tsx         # lista projektów, formularz nowego projektu (HR/ADMIN), własne i zespołowe podsumowania czasu
+    ├── NotificationsPage.tsx    # lista powiadomień, oznacz jako przeczytane
+    ├── ProfilePage.tsx          # własny profil (dane organizacyjne + personalne), edycja danych osobowych, HR/ADMIN: edycja danych organizacyjnych innego pracownika po id
     └── SettingsPage.tsx         # dark mode, rozmiar czcionki, kolor wiodący, zmiana hasła
 ```
 
@@ -72,21 +80,50 @@ src/
 |---|---|---|
 | `/login` | Logowanie (e-mail + hasło) → zapisuje JWT, przekierowuje do `/dashboard` | publiczny |
 | `/register` | Rejestracja (e-mail, hasło, imię, nazwisko) → zapisuje JWT, przekierowuje do `/dashboard` | publiczny |
-| `/dashboard` | Powitanie, rola, kalendarz bieżącego miesiąca z zaznaczonymi dniami urlopu/pracy | zalogowany |
-| `/leave-requests` | Wyśrodkowany formularz nowego wniosku (karta) + lista własnych wniosków ze statusem poniżej | zalogowany |
-| `/leave-requests/pending` | Tabela wniosków `PENDING` z akcjami zatwierdź/odrzuć | `MANAGER` / `HR_ADMIN` (link w nawigacji i `ProtectedRoute` ukryte/zablokowane dla innych ról) |
-| `/time-tracking` | Wyśrodkowana karta rozpocznij/zakończ pracę + lista własnych wpisów poniżej | zalogowany |
+| `/dashboard` | Powitanie, rola, kalendarz bieżącego miesiąca, widget "ostatnie zmiany na wnioskach" | zalogowany |
+| `/leave-requests` | Podsumowanie roczne (dni pracy zdalnej vs pozostałe, wykorzystanie limitu urlopu wypoczynkowego) + formularz nowego wniosku (wszystkie 10 typów) + lista własnych wniosków | zalogowany |
+| `/leave-requests/pending` | Tabela wniosków `PENDING` z akcjami zatwierdź/odrzuć | `MANAGER` (backend dodatkowo ogranicza do bezpośrednich podwładnych) / `HR` / `ADMIN` |
+| `/time-tracking` | Rozpocznij/zakończ pracę z opcjonalnym wyborem projektu + własne podsumowanie czasu per projekt + lista wpisów | zalogowany |
+| `/projects` | Lista projektów; formularz nowego projektu; własne podsumowanie czasu per projekt; zbiorcze podsumowanie zespołu per projekt | zalogowany (tworzenie: `HR`/`ADMIN`; zbiorcze podsumowanie: `MANAGER`/`HR`/`ADMIN`) |
+| `/notifications` | Lista powiadomień (decyzje na wnioskach), oznacz jako przeczytane | zalogowany |
+| `/profile` | Własny profil: dane organizacyjne (stanowisko/dział/zakład/przełożony), dane personalne (data urodzenia/telefon/awatar), edycja danych personalnych; sekcja dodatkowa dla HR/ADMIN do edycji danych organizacyjnych innego pracownika po id | zalogowany (sekcja edycji innych: `HR`/`ADMIN`) |
 | `/settings` | Dark mode, rozmiar czcionki, wybór koloru wiodącego, formularz zmiany hasła | zalogowany |
 
-Profil użytkownika **nie jest osobną stroną** — to kółko z inicjałami w
-prawym górnym rogu nagłówka (obok przycisku "Wyloguj się"); kliknięcie
-otwiera popup z imieniem, nazwiskiem, e-mailem i rolą (`UserAvatarMenu.tsx`).
+Kółko z inicjałami w prawym górnym rogu nagłówka nadal pokazuje szybki popup
+(imię, nazwisko, e-mail, rola) i teraz linkuje do pełnej strony `/profile`
+(`UserAvatarMenu.tsx`).
 
 Token JWT trzymany w `localStorage`, sprawdzany pod kątem wygaśnięcia przy
 starcie aplikacji (`AuthContext`). Token niesie claimy `role`, `firstName`,
 `lastName` obok `sub` (e-mail) — dodane po stronie backendu w
 `JwtTokenProvider`, żeby frontend mógł pokazywać dane profilu i
 pokazywać/ukrywać ekrany zależne od roli bez dodatkowego zapytania do API.
+
+## Role (EMPLOYEE / MANAGER / HR / ADMIN)
+
+Frontend nie ma jeszcze ekranu do nadawania ról — rejestracja (`/register`)
+zawsze tworzy `EMPLOYEE`. Żeby przetestować lokalnie ścieżki wymagające
+`MANAGER`/`HR`/`ADMIN`, trzeba na razie zmienić rolę bezpośrednio w bazie
+(`UPDATE users SET role = 'HR' WHERE email = '...'`), a potem zalogować się
+ponownie (JWT niesie rolę jako claim ustalony w momencie logowania).
+
+## Powiadomienia
+
+`AppLayout` pobiera własne powiadomienia przy każdym wejściu do layoutu i
+pokazuje licznik nieprzeczytanych przy linku "Powiadomienia" w nawigacji
+(np. `Powiadomienia (2)`). Pełna lista i oznaczanie jako przeczytane są na
+`/notifications` (`NotificationsPage.tsx`).
+
+## Projekty i czas pracy w projekcie
+
+`TimeTrackingPage` przy rozpoczęciu pracy pozwala wybrać projekt z listy
+(`GET /api/projects`) — wybór jest opcjonalny, "Brak projektu" zostawia wpis
+bez przypisania. Każda strona z podsumowaniem czasu w projekcie
+(`TimeTrackingPage`, `ProjectsPage`) woła `GET /api/time-entries/me/by-project`
+dla własnych danych; `ProjectsPage` dodatkowo, dla `MANAGER`/`HR`/`ADMIN`,
+pozwala doładować zbiorcze podsumowanie całego zespołu per projekt
+(`GET /api/projects/{id}/summary`) na żądanie (przycisk "Pokaż podsumowanie
+zespołu"), żeby nie robić tego zapytania dla każdego projektu z góry.
 
 ## Zmiana hasła
 
