@@ -53,6 +53,10 @@ public class UserRepositoryAdapter implements UserRepository {
         entity.setDepartment(user.getDepartment());
         entity.setFacility(user.getFacility());
         entity.setSupervisorId(user.getSupervisorId());
+        entity.setBirthDate(user.getBirthDate());
+        entity.setPhoneNumber(user.getPhoneNumber());
+        entity.setAvatarUrl(user.getAvatarUrl());
+        entity.setLastLoginAt(user.getLastLoginAt());
         entity.setCreatedAt(user.getCreatedAt());
         return entity;
     }
@@ -69,6 +73,10 @@ public class UserRepositoryAdapter implements UserRepository {
                 entity.getDepartment(),
                 entity.getFacility(),
                 entity.getSupervisorId(),
+                entity.getBirthDate(),
+                entity.getPhoneNumber(),
+                entity.getAvatarUrl(),
+                entity.getLastLoginAt(),
                 entity.getCreatedAt());
     }
 }

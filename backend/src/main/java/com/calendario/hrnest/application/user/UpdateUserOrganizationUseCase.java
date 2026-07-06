@@ -8,7 +8,7 @@ import com.calendario.hrnest.domain.user.exception.ForbiddenUserActionException;
 import com.calendario.hrnest.domain.user.exception.UserNotFoundException;
 import org.springframework.stereotype.Component;
 
-/** Aktualizacja stanowiska/działu/zakładu/przełożonego — wyłącznie HR_ADMIN. */
+/** Aktualizacja stanowiska/działu/zakładu/przełożonego — wyłącznie HR lub ADMIN. */
 @Component
 public class UpdateUserOrganizationUseCase {
 
@@ -24,7 +24,8 @@ public class UpdateUserOrganizationUseCase {
     }
 
     public UserProfileView execute(UpdateUserOrganizationCommand command) {
-        if (currentUserProvider.currentUserRole() != Role.HR_ADMIN) {
+        Role role = currentUserProvider.currentUserRole();
+        if (role != Role.HR && role != Role.ADMIN) {
             throw new ForbiddenUserActionException();
         }
 

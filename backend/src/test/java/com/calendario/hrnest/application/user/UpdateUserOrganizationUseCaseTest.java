@@ -39,7 +39,7 @@ class UpdateUserOrganizationUseCaseTest {
         User supervisor = User.reconstitute(1L, "szef@example.com", "hash", "Ala", "Szefowa", Role.MANAGER,
                 Instant.now());
 
-        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR_ADMIN);
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
         when(userRepository.findById(2L)).thenReturn(Optional.of(target));
         when(userRepository.findById(1L)).thenReturn(Optional.of(supervisor));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -73,7 +73,7 @@ class UpdateUserOrganizationUseCaseTest {
         UpdateUserOrganizationUseCase useCase =
                 new UpdateUserOrganizationUseCase(userRepository, currentUserProvider, assembler);
 
-        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR_ADMIN);
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
         when(userRepository.findById(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(new UpdateUserOrganizationCommand(404L, "X", "Y", "Z", null)))
@@ -89,7 +89,7 @@ class UpdateUserOrganizationUseCaseTest {
         User target = User.reconstitute(2L, "jan@example.com", "hash", "Jan", "Kowalski", Role.EMPLOYEE,
                 Instant.now());
 
-        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR_ADMIN);
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
         when(userRepository.findById(2L)).thenReturn(Optional.of(target));
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -106,7 +106,7 @@ class UpdateUserOrganizationUseCaseTest {
         User target = User.reconstitute(2L, "jan@example.com", "hash", "Jan", "Kowalski", Role.EMPLOYEE,
                 Instant.now());
 
-        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR_ADMIN);
+        when(currentUserProvider.currentUserRole()).thenReturn(Role.HR);
         when(userRepository.findById(2L)).thenReturn(Optional.of(target));
 
         assertThatThrownBy(() -> useCase.execute(new UpdateUserOrganizationCommand(2L, "X", "Y", "Z", 2L)))

@@ -1,6 +1,8 @@
 package com.calendario.hrnest.api.user;
 
 import com.calendario.hrnest.application.user.GetMyProfileUseCase;
+import com.calendario.hrnest.application.user.UpdateMyPersonalInfoUseCase;
+import com.calendario.hrnest.application.user.UpdatePersonalInfoCommand;
 import com.calendario.hrnest.application.user.UpdateUserOrganizationCommand;
 import com.calendario.hrnest.application.user.UpdateUserOrganizationUseCase;
 import com.calendario.hrnest.application.user.UserProfileView;
@@ -19,11 +21,14 @@ public class UserController {
 
     private final GetMyProfileUseCase getMyProfileUseCase;
     private final UpdateUserOrganizationUseCase updateUserOrganizationUseCase;
+    private final UpdateMyPersonalInfoUseCase updateMyPersonalInfoUseCase;
 
     public UserController(GetMyProfileUseCase getMyProfileUseCase,
-                           UpdateUserOrganizationUseCase updateUserOrganizationUseCase) {
+                           UpdateUserOrganizationUseCase updateUserOrganizationUseCase,
+                           UpdateMyPersonalInfoUseCase updateMyPersonalInfoUseCase) {
         this.getMyProfileUseCase = getMyProfileUseCase;
         this.updateUserOrganizationUseCase = updateUserOrganizationUseCase;
+        this.updateMyPersonalInfoUseCase = updateMyPersonalInfoUseCase;
     }
 
     @GetMapping("/me/profile")
@@ -36,6 +41,14 @@ public class UserController {
                                                           @Valid @RequestBody UpdateUserProfileRequest request) {
         UserProfileView updated = updateUserOrganizationUseCase.execute(new UpdateUserOrganizationCommand(
                 id, request.position(), request.department(), request.facility(), request.supervisorId()));
+        return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/me/personal-info")
+    public ResponseEntity<UserProfileView> updateMyPersonalInfo(
+            @Valid @RequestBody UpdatePersonalInfoRequest request) {
+        UserProfileView updated = updateMyPersonalInfoUseCase.execute(
+                new UpdatePersonalInfoCommand(request.birthDate(), request.phoneNumber(), request.avatarUrl()));
         return ResponseEntity.ok(updated);
     }
 }

@@ -3,6 +3,7 @@ package com.calendario.hrnest.application.auth;
 import com.calendario.hrnest.domain.user.User;
 import com.calendario.hrnest.domain.user.UserRepository;
 import com.calendario.hrnest.domain.user.exception.InvalidCredentialsException;
+import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,6 +27,8 @@ public class LoginUseCase {
             throw new InvalidCredentialsException();
         }
 
-        return new AuthResult(tokenProvider.generateToken(user));
+        User loggedIn = userRepository.save(user.recordLogin(Instant.now()));
+
+        return new AuthResult(tokenProvider.generateToken(loggedIn));
     }
 }

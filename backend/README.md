@@ -32,40 +32,57 @@ nigdy odwrotnie):
 ```
 com.calendario.hrnest
 ├── domain/            # czyste POJO, ZERO adnotacji JPA/Springa — reguły biznesowe i porty
-│   └── user/
-│       ├── User.java              # agregat, tworzony wyłącznie przez User.register(...) / reconstitute(...)
-│       ├── Role.java              # enum: EMPLOYEE, MANAGER, HR_ADMIN
-│       ├── UserRepository.java    # PORT — interfejs, bez śladu Spring Data
-│       └── exception/             # EmailAlreadyExistsException, InvalidCredentialsException,
-│                                   # UserNotFoundException, ForbiddenUserActionException,
-│                                   # InvalidSupervisorAssignmentException
+│   ├── user/
+│   │   ├── User.java              # agregat, tworzony wyłącznie przez User.register(...) / reconstitute(...)
+│   │   ├── Role.java              # enum: EMPLOYEE, MANAGER, HR, ADMIN
+│   │   ├── UserRepository.java    # PORT — interfejs, bez śladu Spring Data
+│   │   └── exception/             # EmailAlreadyExistsException, InvalidCredentialsException,
+│   │                               # UserNotFoundException, ForbiddenUserActionException,
+│   │                               # InvalidSupervisorAssignmentException, InvalidBirthDateException
+│   └── notification/
+│       ├── Notification.java          # agregat, powiadomienie w aplikacji
+│       ├── NotificationType.java      # enum: LEAVE_REQUEST_APPROVED, LEAVE_REQUEST_REJECTED
+│       ├── NotificationRepository.java # PORT
+│       └── exception/                 # NotificationNotFoundException, ForbiddenNotificationActionException
 │
 ├── application/        # Use Case'y — orkiestracja, zależą TYLKO od domain
-│   └── auth/
-│       ├── RegisterUserUseCase.java / LoginUseCase.java
-│       ├── PasswordHasher.java    # PORT (strategy)
-│       ├── TokenProvider.java     # PORT (strategy)
-│       └── RegisterCommand / LoginCommand / AuthResult (DTO wewnętrzne use case'ów)
+│   ├── auth/
+│   │   ├── RegisterUserUseCase.java / LoginUseCase.java
+│   │   ├── PasswordHasher.java    # PORT (strategy)
+│   │   ├── TokenProvider.java     # PORT (strategy)
+│   │   └── RegisterCommand / LoginCommand / AuthResult (DTO wewnętrzne use case'ów)
+│   └── notification/
+│       ├── EmailSender.java               # PORT (strategy) — wysyłka e-maili
+│       ├── LeaveDecisionNotifier.java      # powiadamia (w apce + mailem) o decyzji na wniosku
+│       ├── ListMyNotificationsUseCase.java / MarkNotificationAsReadUseCase.java
+│       └── NotificationView.java
 │
 ├── infrastructure/      # Adaptery — implementacje portów, szczegóły technologiczne
 │   ├── persistence/
 │   │   ├── UserJpaEntity.java             # encja JPA (tabela `users`)
+│   │   ├── NotificationJpaEntity.java     # encja JPA (tabela `notifications`)
 │   │   ├── SpringDataUserRepository.java  # Spring Data (package-private, szczegół implementacyjny)
 │   │   └── UserRepositoryAdapter.java     # implements domain.user.UserRepository, mapuje JPA <-> domain
-│   └── security/
-│       ├── BCryptPasswordHasher.java      # implements PasswordHasher
-│       ├── JwtTokenProvider.java          # implements TokenProvider (jjwt)
-│       ├── UserPrincipal.java             # adapter domain.User -> Spring UserDetails
-│       ├── UserDetailsServiceImpl.java
-│       ├── JwtAuthenticationFilter.java
-│       └── SecurityConfig.java
+│   ├── security/
+│   │   ├── BCryptPasswordHasher.java      # implements PasswordHasher
+│   │   ├── JwtTokenProvider.java          # implements TokenProvider (jjwt)
+│   │   ├── UserPrincipal.java             # adapter domain.User -> Spring UserDetails
+│   │   ├── UserDetailsServiceImpl.java
+│   │   ├── JwtAuthenticationFilter.java
+│   │   └── SecurityConfig.java
+│   └── email/
+│       ├── LoggingEmailSender.java    # implements EmailSender — domyślna (dev/test), tylko loguje
+│       └── SmtpEmailSender.java       # implements EmailSender — aktywna przy app.mail.enabled=true
 │
 └── api/                 # REST — kontrolery, DTO wejścia/wyjścia, mapowanie błędów
     ├── ErrorResponse.java
     ├── GlobalExceptionHandler.java        # @RestControllerAdvice: wyjątki domenowe -> HTTP
-    └── auth/
-        ├── AuthController.java            # wywołuje use case'y, nic więcej
-        └── RegisterRequest / LoginRequest / AuthResponse (walidacja @Valid tu, nie w domenie)
+    ├── auth/
+    │   ├── AuthController.java            # wywołuje use case'y, nic więcej
+    │   └── RegisterRequest / LoginRequest / AuthResponse (walidacja @Valid tu, nie w domenie)
+    └── notification/
+        ├── NotificationController.java
+        └── NotificationExceptionHandler.java
 ```
 
 ### Wzorce
@@ -87,23 +104,61 @@ com.calendario.hrnest
 | email | String | unique, not null |
 | passwordHash | String | not null, hash BCrypt |
 | firstName / lastName | String | not null |
-| role | Role (enum) | EMPLOYEE / MANAGER / HR_ADMIN |
-| position | String | stanowisko, nullable — uzupełniane przez HR po rejestracji |
+| role | Role (enum) | `EMPLOYEE` / `MANAGER` / `HR` / `ADMIN` — patrz niżej |
+| position | String | stanowisko, nullable — uzupełniane przez HR/ADMIN po rejestracji |
 | department | String | dział, nullable |
 | facility | String | zakład / lokalizacja, nullable |
 | supervisorId | Long | id przełożonego (`users.id`), nullable — brak = brak przełożonego |
+| birthDate | LocalDate | data urodzenia, nullable — edytowalna samodzielnie przez użytkownika |
+| phoneNumber | String | telefon kontaktowy, nullable — edytowalny samodzielnie |
+| avatarUrl | String | URL do awatara (nie przechowujemy binarnie w bazie), nullable — edytowalny samodzielnie |
+| lastLoginAt | Instant | znacznik ostatniego logowania, ustawiany automatycznie w `LoginUseCase` |
 | createdAt | Instant | ustawiane w `@PrePersist` |
 
 Domenowy `domain.user.User` jest niemutowalny i nie ma żadnych adnotacji —
 `UserRepositoryAdapter` mapuje go do/z `UserJpaEntity` na granicy warstwy infrastructure.
 
+**Role** (`Role` enum):
+
+| Rola | Znaczenie |
+|---|---|
+| `EMPLOYEE` | Pracownik — składa wnioski, widzi tylko swoje dane |
+| `MANAGER` | Przełożony — zatwierdza/odrzuca wnioski **swoich bezpośrednich podwładnych** (relacja `supervisorId`) |
+| `HR` | Dział kadr — zatwierdza/odrzuca wnioski dowolnego pracownika, zarządza danymi organizacyjnymi |
+| `ADMIN` | Administrator systemu — te same uprawnienia co `HR`, plus pełny dostęp do systemu |
+
+Rejestracja (`/api/auth/register`) zawsze tworzy `EMPLOYEE` — nadanie roli
+`MANAGER`/`HR`/`ADMIN` na tym etapie nie ma dedykowanego endpointu (poza
+zakresem, podobnie jak `LeaveBalance`); w testach/dev robione bezpośrednio
+przez `UserRepository`.
+
 Dane organizacyjne (`position`/`department`/`facility`/`supervisorId`) są
-`null` dla świeżo zarejestrowanego użytkownika — rejestracja (`/api/auth/register`)
-zna tylko dane logowania. Uzupełnia je HR przez
-`PATCH /api/users/{id}/profile`, patrz [Moduł: Profil użytkownika](#moduł-profil-użytkownika).
-Agregat pilnuje jednego niezmiennika: `User.updateOrganization(...)` rzuca
+`null` dla świeżo zarejestrowanego użytkownika — rejestracja zna tylko dane
+logowania. Uzupełnia je HR/ADMIN przez `PATCH /api/users/{id}/profile`, dane
+personalne (`birthDate`/`phoneNumber`/`avatarUrl`) użytkownik ustawia sam
+przez `PATCH /api/users/me/personal-info` — patrz
+[Moduł: Profil użytkownika](#moduł-profil-użytkownika).
+
+Agregat pilnuje dwóch niezmienników: `User.updateOrganization(...)` rzuca
 `InvalidSupervisorAssignmentException`, jeśli ktoś próbuje ustawić użytkownika
-jako przełożonego samego siebie.
+jako przełożonego samego siebie; `User.updatePersonalInfo(...)` rzuca
+`InvalidBirthDateException`, jeśli data urodzenia wypada w przyszłości.
+
+### Notification (`notifications`, `NotificationJpaEntity`)
+
+| Pole | Typ | Uwagi |
+|---|---|---|
+| id | Long | PK, auto-increment |
+| recipientId | Long | id odbiorcy (`users.id`), not null |
+| type | NotificationType (enum) | `LEAVE_REQUEST_APPROVED` / `LEAVE_REQUEST_REJECTED` |
+| message | String | gotowy tekst po polsku (np. "Twój wniosek (...) został zaakceptowany przez ...") |
+| leaveRequestId | Long | id powiązanego wniosku, nullable |
+| read | boolean | czy odbiorca oznaczył jako przeczytane |
+| createdAt | Instant | ustawiane w `@PrePersist` |
+
+Powiadomienia tworzone są wyłącznie wewnętrznie (przez `LeaveDecisionNotifier`
+— patrz [Moduł: Powiadomienia](#moduł-powiadomienia)), nie ma endpointu do
+ręcznego tworzenia.
 
 ## Moduł: Auth (JWT)
 
@@ -175,9 +230,17 @@ decyzji przełożonego", więc korzysta z tego samego cyklu życia
 | `POST /api/leave-requests` | Tworzy wniosek (status `PENDING`) | dowolny zalogowany |
 | `GET /api/leave-requests/me` | Lista własnych wniosków | dowolny zalogowany |
 | `GET /api/leave-requests/me/recent-activity` | Ostatnie zmiany na własnych wnioskach (max 10, sortowane po dacie ostatniej zmiany malejąco) | dowolny zalogowany |
-| `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` / `HR_ADMIN` |
-| `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` / `HR_ADMIN` |
-| `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` / `HR_ADMIN` |
+| `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
+| `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
+| `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
+
+**Zakres uprawnień MANAGER.** Przełożony widzi w `/pending` i może
+zatwierdzać/odrzucać wyłącznie wnioski użytkowników, których `supervisorId`
+wskazuje na niego (bezpośredni podwładni) — sprawdzane przez
+`LeaveRequestScopeGuard` we wszystkich trzech use case'ach. `HR` i `ADMIN` nie
+podlegają temu ograniczeniu — widzą i decydują o wnioskach każdego pracownika.
+Próba zatwierdzenia/odrzucenia wniosku spoza swojego zespołu przez `MANAGER`
+kończy się 403, tak samo jak dla `EMPLOYEE`.
 
 ```jsonc
 // POST /api/leave-requests
@@ -190,10 +253,14 @@ decyzji przełożonego", więc korzysta z tego samego cyklu życia
 // (posortowane: approvedAt jeśli późniejszy niż createdAt, inaczej createdAt — malejąco)
 ```
 
-Błędy: 400 (zły zakres dat / walidacja), 403 (rola bez uprawnień do approve/reject),
-404 (brak wniosku), 409 (decyzja na wniosku, który nie jest już `PENDING`).
-Mapowane przez dedykowany `api.leave.LeaveExceptionHandler` (nie w
-`GlobalExceptionHandler`, żeby moduły mogły rozwijać się niezależnie).
+Błędy: 400 (zły zakres dat / walidacja), 403 (rola/zakres bez uprawnień do
+approve/reject), 404 (brak wniosku), 409 (decyzja na wniosku, który nie jest
+już `PENDING`). Mapowane przez dedykowany `api.leave.LeaveExceptionHandler`
+(nie w `GlobalExceptionHandler`, żeby moduły mogły rozwijać się niezależnie).
+
+Po zatwierdzeniu/odrzuceniu `ApproveLeaveRequestUseCase`/`RejectLeaveRequestUseCase`
+wywołują `LeaveDecisionNotifier`, który tworzy powiadomienie w aplikacji i
+wysyła e-mail do wnioskodawcy — patrz [Moduł: Powiadomienia](#moduł-powiadomienia).
 
 ## Moduł: Time Tracking (czas pracy)
 
@@ -220,46 +287,101 @@ współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułam
 
 ## Moduł: Profil użytkownika
 
-Rozszerza `User` o dane organizacyjne: stanowisko, dział, zakład oraz relację
-przełożony/podwładny. "Czy jestem przełożonym" nie jest osobnym polem — liczone
-dynamicznie jako "czy istnieje użytkownik, którego `supervisorId` wskazuje na
-mnie" (`UserRepository.existsBySupervisorId`), żeby nie trzeba było
-synchronizować dwóch źródeł prawdy przy zmianie struktury podległości.
+Rozszerza `User` o dane organizacyjne (stanowisko, dział, zakład, przełożony)
+i personalne (data urodzenia, telefon, awatar, ostatnie logowanie). Rozdzielone
+celowo na dwa endpointy z różną autoryzacją — dane organizacyjne są
+"twardą" strukturą firmy (edytuje HR/ADMIN), dane personalne należą do
+użytkownika (edytuje sam siebie). "Czy jestem przełożonym" nie jest osobnym
+polem — liczone dynamicznie jako "czy istnieje użytkownik, którego
+`supervisorId` wskazuje na mnie" (`UserRepository.existsBySupervisorId`), żeby
+nie trzeba było synchronizować dwóch źródeł prawdy przy zmianie struktury
+podległości.
 
 | Endpoint | Opis | Uprawnienia |
 |---|---|---|
-| `GET /api/users/me/profile` | Profil zalogowanego użytkownika: stanowisko, dział, zakład, przełożony (id + imię i nazwisko), czy sam jest przełożonym | dowolny zalogowany |
-| `PATCH /api/users/{id}/profile` | Ustawia stanowisko/dział/zakład/przełożonego wskazanego użytkownika | `HR_ADMIN` |
+| `GET /api/users/me/profile` | Pełny profil zalogowanego użytkownika: dane organizacyjne, przełożony (id + imię i nazwisko), czy sam jest przełożonym, dane personalne, ostatnie logowanie | dowolny zalogowany |
+| `PATCH /api/users/{id}/profile` | Ustawia stanowisko/dział/zakład/przełożonego wskazanego użytkownika | `HR` / `ADMIN` |
+| `PATCH /api/users/me/personal-info` | Ustawia własną datę urodzenia/telefon/awatar | dowolny zalogowany (tylko dla siebie) |
 
 ```jsonc
 // GET /api/users/me/profile
 // -> 200 {
 //   "id": 5, "email": "jan@example.com", "firstName": "Jan", "lastName": "Kowalski",
 //   "role": "EMPLOYEE", "position": "Programista", "department": "IT", "facility": "Warszawa",
-//   "isSupervisor": false, "hasSupervisor": true, "supervisorId": 2, "supervisorFullName": "Ala Szefowa"
+//   "isSupervisor": false, "hasSupervisor": true, "supervisorId": 2, "supervisorFullName": "Ala Szefowa",
+//   "birthDate": "1990-05-01", "phoneNumber": "+48123456789", "avatarUrl": "https://.../a.png",
+//   "lastLoginAt": "2026-07-06T08:00:00Z"
 // }
 
-// PATCH /api/users/{id}/profile (wymaga HR_ADMIN)
+// PATCH /api/users/{id}/profile (wymaga HR lub ADMIN)
 { "position": "Programista", "department": "IT", "facility": "Warszawa", "supervisorId": 2 }
 // -> 200 <UserProfileView>  |  400 gdy supervisorId == id (nie można być swoim przełożonym)
-//    403 gdy wywołujący nie jest HR_ADMIN  |  404 gdy użytkownik lub przełożony nie istnieje
+//    403 gdy wywołujący nie jest HR/ADMIN  |  404 gdy użytkownik lub przełożony nie istnieje
+
+// PATCH /api/users/me/personal-info (dowolny zalogowany, tylko własne dane)
+{ "birthDate": "1990-05-01", "phoneNumber": "+48123456789", "avatarUrl": "https://.../a.png" }
+// -> 200 <UserProfileView>  |  400 gdy birthDate w przyszłości
 ```
 
-`PATCH` nadpisuje wszystkie cztery pola naraz (pełny zestaw danych
-organizacyjnych), nie merguje częściowo — `supervisorId: null` jawnie usuwa
-przełożonego. Błędy mapowane w `GlobalExceptionHandler` (ten moduł nie ma
-własnego handlera — analogicznie do `EmailAlreadyExistsException`/
-`InvalidCredentialsException`, wyjątki `domain.user.exception` trafiają tam).
+Oba endpointy `PATCH` nadpisują swój zestaw pól naraz, nie merguje się
+częściowo — np. `supervisorId: null` jawnie usuwa przełożonego. Błędy
+mapowane w `GlobalExceptionHandler` (ten moduł nie ma własnego handlera —
+analogicznie do `EmailAlreadyExistsException`/`InvalidCredentialsException`,
+wyjątki `domain.user.exception` trafiają tam).
+
+## Moduł: Powiadomienia
+
+Tabela `notifications`. Powiadamia wnioskodawcę o decyzji na jego wniosku —
+zarówno w aplikacji, jak i mailem. Wyzwalane wyłącznie wewnętrznie przez
+`LeaveDecisionNotifier` po zatwierdzeniu/odrzuceniu wniosku (patrz
+[Moduł: Leave Requests](#moduł-leave-requests-wnioski-urlopowe)) — brak
+endpointu do ręcznego tworzenia powiadomień.
+
+| Endpoint | Opis | Uprawnienia |
+|---|---|---|
+| `GET /api/notifications/me` | Lista własnych powiadomień, najnowsze pierwsze | dowolny zalogowany |
+| `PATCH /api/notifications/{id}/read` | Oznacza powiadomienie jako przeczytane | dowolny zalogowany (tylko własne) |
+
+```jsonc
+// GET /api/notifications/me
+// -> 200 [{ "id": 1, "type": "LEAVE_REQUEST_APPROVED",
+//           "message": "Twój wniosek (urlop wypoczynkowy, 2026-08-03 – 2026-08-07) został zaakceptowany przez Ala Szefowa.",
+//           "leaveRequestId": 7, "read": false, "createdAt": "..." }]
+
+// PATCH /api/notifications/{id}/read
+// -> 200 <NotificationView z read=true>  |  403 gdy powiadomienie należy do innego użytkownika  |  404 gdy nie istnieje
+```
+
+Błędy mapowane przez dedykowany `api.notification.NotificationExceptionHandler`
+(ta sama konwencja co Leave/Time Tracking).
+
+## Moduł: E-mail
+
+Wysyłka e-maili (na razie tylko decyzje o wnioskach) jest za portem
+`application.notification.EmailSender`, z dwiema implementacjami dobieranymi
+przez `@ConditionalOnProperty` na `app.mail.enabled`:
+
+| Implementacja | Aktywna, gdy | Zachowanie |
+|---|---|---|
+| `LoggingEmailSender` | `app.mail.enabled=false` (**domyślnie**, w tym w testach) | Nie wysyła nic, tylko loguje treść — bezpieczne bez skonfigurowanego SMTP |
+| `SmtpEmailSender` | `app.mail.enabled=true` | Wysyła realnie przez `JavaMailSender` (`spring-boot-starter-mail`) |
+
+Konfiguracja produkcyjna (env): `MAIL_ENABLED=true`, `MAIL_HOST`, `MAIL_PORT`,
+`MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` — patrz
+`src/main/resources/application.properties`. Domyślnie wyłączona celowo, żeby
+żadne środowisko (w tym dev/test) nie wysyłało maili przez przypadek, dopóki
+ktoś świadomie nie skonfiguruje SMTP w produkcji.
 
 ## Testy
 
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
-| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest` |
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `GetMyProfileUseCaseTest`, `UpdateUserOrganizationUseCaseTest` |
-| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest` |
+| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest`, `NotificationTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `GetMyProfileUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest` |
+| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest`, `NotificationRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
-| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest` |
+| `infrastructure.email` | Unit (bez Springa) | `LoggingEmailSenderTest` |
+| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest`, `NotificationControllerTest` |
 
 Uwaga: e-maile testowe w każdej klasie `@SpringBootTest` muszą być unikalne w
 całym module — Spring cache'uje kontekst (i bazę H2) między klasami testów o
@@ -279,7 +401,12 @@ pominięciem endpointu rejestracji.
 | Bootstrap projektu | ✅ |
 | Clean Architecture (domain/application/infrastructure/api) | ✅ |
 | User + JWT auth (register/login) | ✅ |
+| Role EMPLOYEE / MANAGER / HR / ADMIN | ✅ |
 | Leave requests (w tym praca z domu, urlop na żądanie, okolicznościowy, opieka nad dzieckiem bezpłatna, odbiór za święto, delegacja) | ✅ |
+| Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy | ✅ |
 | Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ |
 | Time tracking | ✅ |
-| Profil użytkownika (stanowisko, dział, zakład, przełożony) | ✅ |
+| Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony) | ✅ |
+| Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ |
+| Powiadomienia w aplikacji o decyzji na wniosku | ✅ |
+| Powiadomienia mailowe o decyzji na wniosku (feature-flag `app.mail.enabled`) | ✅ |

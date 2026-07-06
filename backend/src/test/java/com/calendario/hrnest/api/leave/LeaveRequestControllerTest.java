@@ -38,25 +38,35 @@ class LeaveRequestControllerTest {
     @Autowired
     private TokenProvider tokenProvider;
 
-    private String registerEmployeeAndGetToken(String email) throws Exception {
+    private record RegisteredUser(Long id, String token) {
+    }
+
+    private RegisteredUser registerEmployeeAndGetToken(String email) throws Exception {
         RegisterRequest request = new RegisterRequest(email, "bardzoSilneHaslo123", "Jan", "Kowalski");
         String response = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response).get("token").asText();
+        String token = objectMapper.readTree(response).get("token").asText();
+        Long id = userRepository.findByEmail(email).orElseThrow().getId();
+        return new RegisteredUser(id, token);
     }
 
-    private String createManagerAndGetToken(String email) {
-        User manager = User.reconstitute(null, email, "hash", "Ala", "Manager", Role.MANAGER, Instant.now());
-        User saved = userRepository.save(manager);
-        return tokenProvider.generateToken(saved);
+    private RegisteredUser createUserAndGetToken(String email, Role role) {
+        User user = User.reconstitute(null, email, "hash", "Ala", "Kierownik", role, Instant.now());
+        User saved = userRepository.save(user);
+        return new RegisteredUser(saved.getId(), tokenProvider.generateToken(saved));
+    }
+
+    private void assignSupervisor(Long employeeId, Long supervisorId) {
+        User employee = userRepository.findById(employeeId).orElseThrow();
+        userRepository.save(employee.updateOrganization(null, null, null, supervisorId));
     }
 
     @Test
     void createLeaveRequest_thenListMine_returnsIt() throws Exception {
-        String token = registerEmployeeAndGetToken("pracownik1@example.com");
+        String token = registerEmployeeAndGetToken("pracownik1@example.com").token();
 
         mockMvc.perform(post("/api/leave-requests")
                         .header("Authorization", "Bearer " + token)
@@ -75,7 +85,7 @@ class LeaveRequestControllerTest {
 
     @Test
     void createLeaveRequest_rejectsInvalidRange() throws Exception {
-        String token = registerEmployeeAndGetToken("pracownik2@example.com");
+        String token = registerEmployeeAndGetToken("pracownik2@example.com").token();
 
         mockMvc.perform(post("/api/leave-requests")
                         .header("Authorization", "Bearer " + token)
@@ -87,12 +97,13 @@ class LeaveRequestControllerTest {
     }
 
     @Test
-    void approve_asManager_succeeds() throws Exception {
-        String employeeToken = registerEmployeeAndGetToken("pracownik3@example.com");
-        String managerToken = createManagerAndGetToken("manager1@example.com");
+    void approve_asDirectSupervisor_succeeds() throws Exception {
+        RegisteredUser employee = registerEmployeeAndGetToken("pracownik3@example.com");
+        RegisteredUser manager = createUserAndGetToken("manager1@example.com", Role.MANAGER);
+        assignSupervisor(employee.id(), manager.id());
 
         String createResponse = mockMvc.perform(post("/api/leave-requests")
-                        .header("Authorization", "Bearer " + employeeToken)
+                        .header("Authorization", "Bearer " + employee.token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"type":"SICK_LEAVE","startDate":"2026-08-03","endDate":"2026-08-03"}
@@ -101,14 +112,56 @@ class LeaveRequestControllerTest {
                 .andReturn().getResponse().getContentAsString();
         Long id = objectMapper.readTree(createResponse).get("id").asLong();
 
-        mockMvc.perform(patch("/api/leave-requests/" + id + "/approve").header("Authorization", "Bearer " + managerToken))
+        mockMvc.perform(patch("/api/leave-requests/" + id + "/approve")
+                        .header("Authorization", "Bearer " + manager.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+    }
+
+    @Test
+    void approve_asManagerWithoutSupervisorRelation_isForbidden() throws Exception {
+        RegisteredUser employee = registerEmployeeAndGetToken("pracownik3b@example.com");
+        RegisteredUser unrelatedManager = createUserAndGetToken("manager1b@example.com", Role.MANAGER);
+
+        String createResponse = mockMvc.perform(post("/api/leave-requests")
+                        .header("Authorization", "Bearer " + employee.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"SICK_LEAVE","startDate":"2026-08-03","endDate":"2026-08-03"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(createResponse).get("id").asLong();
+
+        mockMvc.perform(patch("/api/leave-requests/" + id + "/approve")
+                        .header("Authorization", "Bearer " + unrelatedManager.token()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void approve_asHr_succeedsWithoutSupervisorRelation() throws Exception {
+        RegisteredUser employee = registerEmployeeAndGetToken("pracownik3c@example.com");
+        RegisteredUser hr = createUserAndGetToken("hrleave1@example.com", Role.HR);
+
+        String createResponse = mockMvc.perform(post("/api/leave-requests")
+                        .header("Authorization", "Bearer " + employee.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"SICK_LEAVE","startDate":"2026-08-03","endDate":"2026-08-03"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(createResponse).get("id").asLong();
+
+        mockMvc.perform(patch("/api/leave-requests/" + id + "/approve")
+                        .header("Authorization", "Bearer " + hr.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 
     @Test
     void approve_asEmployee_isForbidden() throws Exception {
-        String employeeToken = registerEmployeeAndGetToken("pracownik4@example.com");
+        String employeeToken = registerEmployeeAndGetToken("pracownik4@example.com").token();
 
         String createResponse = mockMvc.perform(post("/api/leave-requests")
                         .header("Authorization", "Bearer " + employeeToken)
@@ -126,10 +179,38 @@ class LeaveRequestControllerTest {
 
     @Test
     void listPending_asEmployee_isForbidden() throws Exception {
-        String employeeToken = registerEmployeeAndGetToken("pracownik5@example.com");
+        String employeeToken = registerEmployeeAndGetToken("pracownik5@example.com").token();
 
         mockMvc.perform(get("/api/leave-requests/pending").header("Authorization", "Bearer " + employeeToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listPending_asManager_onlyShowsDirectReports() throws Exception {
+        RegisteredUser reportee = registerEmployeeAndGetToken("pracownik5b@example.com");
+        RegisteredUser stranger = registerEmployeeAndGetToken("pracownik5c@example.com");
+        RegisteredUser manager = createUserAndGetToken("manager2@example.com", Role.MANAGER);
+        assignSupervisor(reportee.id(), manager.id());
+
+        mockMvc.perform(post("/api/leave-requests")
+                        .header("Authorization", "Bearer " + reportee.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"VACATION","startDate":"2026-08-03","endDate":"2026-08-03"}
+                                """))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/leave-requests")
+                        .header("Authorization", "Bearer " + stranger.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"VACATION","startDate":"2026-08-04","endDate":"2026-08-04"}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/leave-requests/pending").header("Authorization", "Bearer " + manager.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].requesterId").value(reportee.id()));
     }
 
     @Test
@@ -141,7 +222,7 @@ class LeaveRequestControllerTest {
 
     @Test
     void createLeaveRequest_acceptsRemoteWorkType() throws Exception {
-        String token = registerEmployeeAndGetToken("pracownik6@example.com");
+        String token = registerEmployeeAndGetToken("pracownik6@example.com").token();
 
         mockMvc.perform(post("/api/leave-requests")
                         .header("Authorization", "Bearer " + token)
@@ -155,7 +236,7 @@ class LeaveRequestControllerTest {
 
     @Test
     void recentActivity_returnsOwnRequests_mostRecentFirst() throws Exception {
-        String token = registerEmployeeAndGetToken("pracownik7@example.com");
+        String token = registerEmployeeAndGetToken("pracownik7@example.com").token();
 
         mockMvc.perform(post("/api/leave-requests")
                         .header("Authorization", "Bearer " + token)

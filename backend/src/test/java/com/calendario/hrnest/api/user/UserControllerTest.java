@@ -72,7 +72,7 @@ class UserControllerTest {
 
     @Test
     void updateProfile_asHrAdmin_setsOrganizationalData() throws Exception {
-        RegisteredUser hrAdmin = createUserAndGetToken("hr1@example.com", Role.HR_ADMIN);
+        RegisteredUser hrAdmin = createUserAndGetToken("hr1@example.com", Role.HR);
         RegisteredUser supervisor = createUserAndGetToken("kierownik1@example.com", Role.MANAGER);
         RegisteredUser employee = registerEmployeeAndGetToken("profil2@example.com");
 
@@ -109,7 +109,7 @@ class UserControllerTest {
 
     @Test
     void updateProfile_selfSupervision_isRejected() throws Exception {
-        RegisteredUser hrAdmin = createUserAndGetToken("hr2@example.com", Role.HR_ADMIN);
+        RegisteredUser hrAdmin = createUserAndGetToken("hr2@example.com", Role.HR);
         RegisteredUser employee = registerEmployeeAndGetToken("profil4@example.com");
 
         mockMvc.perform(patch("/api/users/" + employee.id() + "/profile")
@@ -124,5 +124,34 @@ class UserControllerTest {
     @Test
     void myProfile_requiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/users/me/profile")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateMyPersonalInfo_setsBirthDatePhoneAndAvatar() throws Exception {
+        RegisteredUser employee = registerEmployeeAndGetToken("profil5@example.com");
+
+        mockMvc.perform(patch("/api/users/me/personal-info")
+                        .header("Authorization", "Bearer " + employee.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"birthDate":"1990-05-01","phoneNumber":"+48123456789","avatarUrl":"https://example.com/a.png"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.birthDate").value("1990-05-01"))
+                .andExpect(jsonPath("$.phoneNumber").value("+48123456789"))
+                .andExpect(jsonPath("$.avatarUrl").value("https://example.com/a.png"));
+    }
+
+    @Test
+    void updateMyPersonalInfo_rejectsFutureBirthDate() throws Exception {
+        RegisteredUser employee = registerEmployeeAndGetToken("profil6@example.com");
+
+        mockMvc.perform(patch("/api/users/me/personal-info")
+                        .header("Authorization", "Bearer " + employee.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"birthDate":"2999-01-01"}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 }

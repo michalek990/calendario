@@ -2,6 +2,7 @@ package com.calendario.hrnest.api;
 
 import com.calendario.hrnest.domain.user.exception.EmailAlreadyExistsException;
 import com.calendario.hrnest.domain.user.exception.ForbiddenUserActionException;
+import com.calendario.hrnest.domain.user.exception.InvalidBirthDateException;
 import com.calendario.hrnest.domain.user.exception.InvalidCredentialsException;
 import com.calendario.hrnest.domain.user.exception.InvalidSupervisorAssignmentException;
 import com.calendario.hrnest.domain.user.exception.UserNotFoundException;
@@ -36,6 +37,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidSupervisorAssignmentException.class)
     public ResponseEntity<ErrorResponse> handleInvalidSupervisorAssignment(InvalidSupervisorAssignmentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidBirthDateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBirthDate(InvalidBirthDateException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
     }
 }

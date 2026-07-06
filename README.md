@@ -21,9 +21,13 @@ Calendario/
 | Moduł | Backend | Frontend |
 |---|---|---|
 | Users / Auth (register, login, zmiana hasła) | ✅ | ✅ (logowanie/rejestracja, popup profilu w navbarze, zmiana hasła w ustawieniach) |
-| Profil użytkownika (stanowisko, dział, zakład, przełożony/podwładny) | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-profil-użytkownika)) |
-| Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR_ADMIN, widoczne na kalendarzu pulpitu — nowe typy wniosków wymagają dodania ich do frontendu) |
+| Role EMPLOYEE / MANAGER / HR / ADMIN | ✅ | — (rola widoczna w JWT, ale bez UI do zarządzania rolami) |
+| Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony/podwładny) | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-profil-użytkownika)) |
+| Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ | — (na razie tylko API) |
+| Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR/ADMIN, widoczne na kalendarzu pulpitu — nowe typy wniosków wymagają dodania ich do frontendu) |
+| Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy pracownik | ✅ | ✅ (frontend woła te same endpointy, backend teraz dodatkowo weryfikuje zakres) |
 | Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ | — (na razie tylko API) |
+| Powiadomienia w aplikacji i mailem o decyzji na wniosku | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-powiadomienia)) |
 | Time Tracking (czas pracy) | ✅ | ✅ (wyśrodkowana karta rozpocznij/zakończ pracę, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
 | Ustawienia wyglądu (dark mode, czcionka, kolor wiodący) | — | ✅ (czysto frontendowe, `localStorage`) |
 
@@ -53,6 +57,12 @@ zmienną środowiskową w `docker-compose.yml`), więc schemat tabel tworzy się
 automatycznie przy pierwszym starcie — bez ręcznych migracji. `JWT_SECRET`
 można nadpisać zmienną środowiskową hosta przed odpaleniem; domyślny sekret
 jest tylko na potrzeby dev/testów.
+
+Powiadomienia mailowe o decyzjach na wnioskach są domyślnie wyłączone
+(`MAIL_ENABLED=false`) — aplikacja loguje treść zamiast wysyłać. Żeby włączyć
+realną wysyłkę w produkcji, ustaw `MAIL_ENABLED=true` oraz `MAIL_HOST`,
+`MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` jako zmienne
+środowiskowe hosta przed `docker compose up`.
 
 Zatrzymanie: `docker compose down` (dodaj `-v`, żeby usunąć też wolumen z
 danymi Postgresa).

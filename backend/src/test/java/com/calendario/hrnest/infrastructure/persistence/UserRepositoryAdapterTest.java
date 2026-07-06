@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.calendario.hrnest.domain.user.Role;
 import com.calendario.hrnest.domain.user.User;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -75,5 +78,21 @@ class UserRepositoryAdapterTest {
 
         assertThat(userRepositoryAdapter.existsBySupervisorId(supervisor.getId())).isTrue();
         assertThat(userRepositoryAdapter.existsBySupervisorId(savedSubordinate.getId())).isFalse();
+    }
+
+    @Test
+    void save_thenFindById_roundTripsPersonalFields() {
+        Instant loginAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        User user = User.register("kontakt@example.com", "hashed", "Ewa", "Testowa")
+                .updatePersonalInfo(LocalDate.of(1990, 5, 1), "+48123456789", "https://example.com/a.png")
+                .recordLogin(loginAt);
+
+        User saved = userRepositoryAdapter.save(user);
+
+        User found = userRepositoryAdapter.findById(saved.getId()).orElseThrow();
+        assertThat(found.getBirthDate()).isEqualTo(LocalDate.of(1990, 5, 1));
+        assertThat(found.getPhoneNumber()).isEqualTo("+48123456789");
+        assertThat(found.getAvatarUrl()).isEqualTo("https://example.com/a.png");
+        assertThat(found.getLastLoginAt()).isEqualTo(loginAt);
     }
 }

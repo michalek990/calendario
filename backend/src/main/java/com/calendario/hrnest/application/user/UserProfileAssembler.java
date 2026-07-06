@@ -40,6 +40,10 @@ class UserProfileAssembler {
                 isSupervisor,
                 user.getSupervisorId() != null,
                 user.getSupervisorId(),
-                supervisorFullName);
+                supervisorFullName,
+                user.getBirthDate(),
+                user.getPhoneNumber(),
+                user.getAvatarUrl(),
+                user.getLastLoginAt());
     }
 }

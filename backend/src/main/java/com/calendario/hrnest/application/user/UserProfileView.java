@@ -1,6 +1,8 @@
 package com.calendario.hrnest.application.user;
 
 import com.calendario.hrnest.domain.user.Role;
+import java.time.Instant;
+import java.time.LocalDate;
 
 public record UserProfileView(
         Long id,
@@ -14,6 +16,10 @@ public record UserProfileView(
         boolean isSupervisor,
         boolean hasSupervisor,
         Long supervisorId,
-        String supervisorFullName
+        String supervisorFullName,
+        LocalDate birthDate,
+        String phoneNumber,
+        String avatarUrl,
+        Instant lastLoginAt
 ) {
 }
