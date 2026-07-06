@@ -162,7 +162,11 @@ export function ProjectsPage() {
                       ) : summary === 'error' ? (
                         <span className="auth-error">Nie udało się pobrać podsumowania</span>
                       ) : (
-                        <button disabled={loadingSummaryId === project.id} onClick={() => handleLoadSummary(project.id)}>
+                        <button
+                          className="btn-secondary"
+                          disabled={loadingSummaryId === project.id}
+                          onClick={() => handleLoadSummary(project.id)}
+                        >
                           {loadingSummaryId === project.id ? 'Ładowanie…' : 'Pokaż podsumowanie zespołu'}
                         </button>
                       )}

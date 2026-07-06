@@ -7,7 +7,7 @@ export interface ColorPreset {
 }
 
 export const COLOR_PRESETS: ColorPreset[] = [
-  { id: 'blue', label: 'Jasny niebieski', primary: '#2f6fed', primaryLight: '#2559c7', primaryLighter: '#4a86ff' },
+  { id: 'blue', label: 'Jasny niebieski', primary: '#2196f3', primaryLight: '#1769aa', primaryLighter: '#4dabf5' },
   { id: 'navy', label: 'Granat', primary: '#0f1f3d', primaryLight: '#1c3564', primaryLighter: '#274277' },
   { id: 'green', label: 'Zieleń', primary: '#1f8a52', primaryLight: '#166b3f', primaryLighter: '#28a866' },
   { id: 'purple', label: 'Fiolet', primary: '#6b46c1', primaryLight: '#55349b', primaryLighter: '#7e5cd6' },

@@ -72,7 +72,11 @@ export function NotificationsPage() {
                 {notification.read ? (
                   <span className="status-badge status-cancelled">Przeczytane</span>
                 ) : (
-                  <button disabled={processingId === notification.id} onClick={() => handleMarkAsRead(notification.id)}>
+                  <button
+                    className="btn-secondary"
+                    disabled={processingId === notification.id}
+                    onClick={() => handleMarkAsRead(notification.id)}
+                  >
                     {processingId === notification.id ? 'Zapisywanie…' : 'Oznacz jako przeczytane'}
                   </button>
                 )}

@@ -1,12 +1,12 @@
 :root {
-  --primary: #2f6fed;
-  --primary-light: #2559c7;
-  --primary-lighter: #4a86ff;
+  --primary: #2196f3;
+  --primary-light: #1769aa;
+  --primary-lighter: #4dabf5;
   --white: #ffffff;
   --yellow: #ffc82c;
   --yellow-dark: #e0aa00;
 
-  --text: #14213d;
+  --text: #16202e;
   --text-muted: #5b6472;
   --bg: #f4f6fb;
   --surface: #ffffff;
@@ -21,13 +21,13 @@
 
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 12px 28px rgba(15, 23, 42, 0.1);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --sidebar-width: 252px;
 
   font-size: 16px;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   line-height: 150%;
   color: var(--text);
   background: var(--bg);

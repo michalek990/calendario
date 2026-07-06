@@ -18,22 +18,35 @@ produkcyjnym — patrz [root README](../README.md#uruchomienie-przez-docker-comp
 
 ## Wygląd
 
-Layout w stylu produktu HR SaaS: stały lewy **sidebar** (tło w kolorze
-wiodącym, ikony + etykiety, aktywna pozycja podświetlona żółtym paskiem)
-zamiast poprzedniego górnego navbara, i **topbar** nad treścią z dzwonkiem
-powiadomień (z licznikiem nieprzeczytanych) i menu awatara. Strony
-logowania/rejestracji mają dwupanelowy układ — lewa połowa to branding na
-gradiencie koloru wiodącego, prawa to formularz na jasnym tle. Pulpit ma
-rząd kart KPI (`stat-card`): pozostały urlop, status pracy, nieprzeczytane
-powiadomienia.
+Layout w stylu produktu HR SaaS: stały **sidebar po prawej stronie** (tło w
+kolorze wiodącym, ikony + etykiety; aktywna pozycja to pełne białe wypełnienie
+z tekstem w kolorze wiodącym — bez cienkiego "podkreślenia") i **topbar** nad
+treścią z dzwonkiem powiadomień (z licznikiem nieprzeczytanych) i menu
+awatara. Strony logowania/rejestracji mają dwupanelowy układ — jedna połowa
+branding na gradiencie koloru wiodącego, druga formularz na jasnym tle.
+Pulpit ma rząd kart KPI (`stat-card`): pozostały urlop, status pracy,
+nieprzeczytane powiadomienia.
 
 Ikony (`components/icons.tsx`) to odręcznie napisane komponenty SVG w stylu
 Feather/Lucide (stroke, bez wypełnienia) — celowo bez zewnętrznej biblioteki
 ikon, żeby nie dokładać zależności dla garści prostych glifów.
 
-Paleta: jasny niebieski (`--primary`) + biel + żółty (`--yellow`) jako
-akcent, spójne tokeny odstępów/promieni/cieni (`--radius-sm/md/lg`,
-`--shadow-sm/md`) w `index.css`. Wszystko konfigurowalne na `/settings`:
+Typografia: **IBM Plex Sans** (Google Fonts, `index.html`) zamiast domyślnego
+stosu systemowego — bardziej rozpoznawalny, "korporacyjny" krój niż
+domyślny `system-ui`. Kształt: celowo **kwadratowy**, nie zaokrąglony —
+`--radius-sm/md/lg` w `index.css` to 4/6/8px (zamiast poprzednich
+8/12/18px), więc karty, odznaki, avatar i przełącznik koloru mają ledwo
+zauważalne zaokrąglenie zamiast "bąbelkowego" SaaS-owego looku. Wyjątek:
+przełącznik trybu ciemnego (`.switch`) został pigułką/kółkiem, bo to
+rozpoznawalny wzorzec interakcji (iOS-owy toggle), nie ozdobnik.
+
+Paleta: jaśniejszy, bardziej nasycony niebieski (`--primary: #2196f3`) + biel
++ żółty (`--yellow`) jako akcent, spójne tokeny odstępów/promieni/cieni
+(`--radius-sm/md/lg`, `--shadow-sm/md`) w `index.css`. Każdy samodzielny
+przycisk poza formularzem/tabelą (np. "Oznacz jako przeczytane",
+"Pokaż podsumowanie zespołu") ma klasę `.btn-secondary` — wcześniej takie
+przyciski nie miały żadnej klasy i renderowały się z domyślnym stylem
+przeglądarki. Wszystko konfigurowalne na `/settings`:
 - **tryb ciemny** — przełącznik, zmienia `--bg`/`--surface`/`--text`/`--border`
   (sidebar zostaje w kolorze wiodącym niezależnie od motywu — to stały
   element brandingu, tak jak w większości produktów SaaS)
