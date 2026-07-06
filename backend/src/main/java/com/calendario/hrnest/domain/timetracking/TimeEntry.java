@@ -1,5 +1,6 @@
 package com.calendario.hrnest.domain.timetracking;
 
+import com.calendario.hrnest.domain.timetracking.exception.InvalidTimeEntryRangeException;
 import com.calendario.hrnest.domain.timetracking.exception.TimeEntryAlreadyClosedException;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,7 +33,23 @@ public final class TimeEntry {
 
     /** Rozpoczyna wpis, opcjonalnie przypisany do konkretnego projektu ({@code projectId} może być null). */
     public static TimeEntry clockIn(Long userId, Long projectId) {
-        return new TimeEntry(null, userId, Instant.now(), null, 0, null, projectId);
+        return clockIn(userId, projectId, null);
+    }
+
+    /** Rozpoczyna wpis o podanej chwili ({@code at}), albo o teraz, jeśli {@code at} jest null. */
+    public static TimeEntry clockIn(Long userId, Long projectId, Instant at) {
+        return new TimeEntry(null, userId, at != null ? at : Instant.now(), null, 0, null, projectId);
+    }
+
+    /**
+     * Rejestruje już zakończony wpis czasu pracy dla jednego dnia — zamiast "na żywo"
+     * clock-in/clock-out, użytkownik podaje wprost godzinę rozpoczęcia i zakończenia.
+     */
+    public static TimeEntry log(Long userId, Instant clockIn, Instant clockOut, int breakMinutes, Long projectId) {
+        if (!clockOut.isAfter(clockIn)) {
+            throw new InvalidTimeEntryRangeException();
+        }
+        return new TimeEntry(null, userId, clockIn, clockOut, breakMinutes, null, projectId);
     }
 
     public static TimeEntry reconstitute(Long id, Long userId, Instant clockIn, Instant clockOut,
@@ -46,10 +63,27 @@ public final class TimeEntry {
     }
 
     public TimeEntry clockOut() {
+        return clockOut(null);
+    }
+
+    /** Zamyka wpis o podanej chwili ({@code at}), albo o teraz, jeśli {@code at} jest null. */
+    public TimeEntry clockOut(Instant at) {
         if (clockOut != null) {
             throw new TimeEntryAlreadyClosedException();
         }
-        return new TimeEntry(id, userId, clockIn, Instant.now(), breakMinutes, notes, projectId);
+        Instant resolvedClockOut = at != null ? at : Instant.now();
+        if (!resolvedClockOut.isAfter(clockIn)) {
+            throw new InvalidTimeEntryRangeException();
+        }
+        return new TimeEntry(id, userId, clockIn, resolvedClockOut, breakMinutes, notes, projectId);
+    }
+
+    /** Poprawia godziny/przerwę/projekt już zarejestrowanego wpisu — np. gdy clock-in/out zapisał złą godzinę. */
+    public TimeEntry update(Instant clockIn, Instant clockOut, int breakMinutes, Long projectId) {
+        if (clockOut != null && !clockOut.isAfter(clockIn)) {
+            throw new InvalidTimeEntryRangeException();
+        }
+        return new TimeEntry(id, userId, clockIn, clockOut, breakMinutes, notes, projectId);
     }
 
     /** Minuty przepracowane (clockIn -> clockOut minus przerwa), albo null dopóki wpis jest otwarty. */

@@ -1,6 +1,7 @@
 package com.calendario.hrnest.api;
 
 import com.calendario.hrnest.domain.user.exception.EmailAlreadyExistsException;
+import com.calendario.hrnest.domain.user.exception.ForbiddenRoleChangeException;
 import com.calendario.hrnest.domain.user.exception.ForbiddenUserActionException;
 import com.calendario.hrnest.domain.user.exception.InvalidBirthDateException;
 import com.calendario.hrnest.domain.user.exception.InvalidCredentialsException;
@@ -43,5 +44,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidBirthDateException.class)
     public ResponseEntity<ErrorResponse> handleInvalidBirthDate(InvalidBirthDateException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenRoleChangeException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenRoleChange(ForbiddenRoleChangeException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ex.getMessage()));
     }
 }

@@ -172,7 +172,6 @@
 }
 
 .sidebar {
-  order: 2;
   width: var(--sidebar-width);
   flex-shrink: 0;
   display: flex;
@@ -180,6 +179,10 @@
   background: var(--primary);
   padding: 20px 14px;
   gap: 8px;
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -277,7 +280,6 @@
 }
 
 .app-main {
-  order: 1;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -415,6 +417,100 @@
   color: var(--text-muted);
 }
 
+/* ---------- Clock widget (dashboard) ---------- */
+
+.clock-widget {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.clock-widget-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.clock-widget-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.clock-widget-status {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.clock-widget-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.clock-widget-select {
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  max-width: 220px;
+}
+
+.clock-widget-time-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  max-width: 160px;
+}
+
+.clock-widget-button {
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--white);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+.clock-widget-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.clock-widget-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.clock-widget-button-stop {
+  background: var(--error);
+}
+
+.clock-widget-button-stop:hover:not(:disabled) {
+  background: var(--error);
+  opacity: 0.85;
+}
+
 /* ---------- Cards / forms ---------- */
 
 .centered-form-wrapper {
@@ -488,6 +584,67 @@
   cursor: not-allowed;
 }
 
+/** Formularz na pełną szerokość karty — grid responsywnych pól zamiast wąskiej wyśrodkowanej kolumny. */
+.wide-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px 16px;
+  align-items: end;
+}
+
+.wide-form label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.wide-form input,
+.wide-form select {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.wide-form input:focus,
+.wide-form select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.wide-form .auth-error {
+  grid-column: 1 / -1;
+}
+
+.wide-form-actions {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
+
+.wide-form-actions button {
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--white);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.wide-form-actions button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.wide-form-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .list-section {
   margin-bottom: 28px;
 }
@@ -543,6 +700,85 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
+}
+
+.button-secondary {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.button-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.record-list-item-editing {
+  display: block;
+  padding: 18px;
+}
+
+.inline-edit-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 14px;
+  align-items: end;
+}
+
+.inline-edit-form label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.inline-edit-form input,
+.inline-edit-form select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.inline-edit-form .auth-error {
+  grid-column: 1 / -1;
+}
+
+.inline-edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.inline-edit-actions button[type='submit'] {
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.inline-edit-actions button[type='submit']:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.inline-edit-actions button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ---------- Tables ---------- */
@@ -602,6 +838,38 @@ tr:last-child td {
   cursor: not-allowed;
 }
 
+.actions button.button-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+
+.actions button.button-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+/** Pola formularza wstawione bezpośrednio w komórkę tabeli (tryb edycji wiersza). */
+.table-input {
+  width: 100%;
+  min-width: 110px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.table-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+tr.table-row-editing td {
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+}
+
 /* ---------- Badges ---------- */
 
 .status-badge {
@@ -635,6 +903,98 @@ tr:last-child td {
 
 :root[data-theme='dark'] .status-pending {
   color: #ffe396;
+}
+
+/* ---------- People list (Administracja, Zespół) ---------- */
+
+.person-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.person-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--white);
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.person-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.person-email {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.role-badge-ADMIN {
+  background: color-mix(in srgb, var(--error) 16%, var(--surface));
+  color: var(--error);
+}
+
+.role-badge-HR {
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  color: var(--primary);
+}
+
+.role-badge-MANAGER {
+  background: color-mix(in srgb, var(--yellow) 30%, var(--surface));
+  color: #7a5b00;
+}
+
+.role-badge-EMPLOYEE {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .role-badge-MANAGER {
+  color: #ffe396;
+}
+
+.section-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-tab {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.section-tab:hover {
+  color: var(--text);
+}
+
+.section-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
 }
 
 /* ---------- Month calendar ---------- */

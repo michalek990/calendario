@@ -8,7 +8,11 @@ public interface TimeEntryRepository {
 
     TimeEntry save(TimeEntry timeEntry);
 
+    Optional<TimeEntry> findById(Long id);
+
     Optional<TimeEntry> findOpenEntryByUserId(Long userId);
+
+    List<TimeEntry> findAll();
 
     List<TimeEntry> findByUserId(Long userId);
 

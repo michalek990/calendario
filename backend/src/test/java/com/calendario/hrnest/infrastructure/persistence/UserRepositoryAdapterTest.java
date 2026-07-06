@@ -95,4 +95,12 @@ class UserRepositoryAdapterTest {
         assertThat(found.getAvatarUrl()).isEqualTo("https://example.com/a.png");
         assertThat(found.getLastLoginAt()).isEqualTo(loginAt);
     }
+
+    @Test
+    void findAll_returnsAllSavedUsers() {
+        userRepositoryAdapter.save(User.register("user1@example.com", "hashed", "A", "A"));
+        userRepositoryAdapter.save(User.register("user2@example.com", "hashed", "B", "B"));
+
+        assertThat(userRepositoryAdapter.findAll()).hasSize(2);
+    }
 }

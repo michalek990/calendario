@@ -146,4 +146,84 @@ class TimeEntryControllerTest {
     void listMineByProject_requiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/time-entries/me/by-project")).andExpect(status().isForbidden());
     }
+
+    @Test
+    void log_createsClosedEntry_forGivenInstants() throws Exception {
+        String token = registerAndGetToken("czaspracy6@example.com");
+
+        mockMvc.perform(post("/api/time-entries/log")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"clockIn":"2026-08-03T08:00:00Z","clockOut":"2026-08-03T16:00:00Z","breakMinutes":30}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.clockOut").exists())
+                .andExpect(jsonPath("$.totalMinutes").value(8 * 60 - 30));
+    }
+
+    @Test
+    void log_withEndBeforeStart_returnsBadRequest() throws Exception {
+        String token = registerAndGetToken("czaspracy7@example.com");
+
+        mockMvc.perform(post("/api/time-entries/log")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"clockIn":"2026-08-03T16:00:00Z","clockOut":"2026-08-03T08:00:00Z"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void log_withUnknownProjectId_returnsNotFound() throws Exception {
+        String token = registerAndGetToken("czaspracy8@example.com");
+
+        mockMvc.perform(post("/api/time-entries/log")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"clockIn":"2026-08-03T08:00:00Z","clockOut":"2026-08-03T16:00:00Z","projectId":999999}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void log_requiresAuthentication() throws Exception {
+        mockMvc.perform(post("/api/time-entries/log")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"clockIn":"2026-08-03T08:00:00Z","clockOut":"2026-08-03T16:00:00Z"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listManaged_asHr_returnsEntriesWithEmployeeNames() throws Exception {
+        String employeeToken = registerAndGetToken("czaspracy9@example.com");
+        mockMvc.perform(post("/api/time-entries/clock-in").header("Authorization", "Bearer " + employeeToken))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/time-entries/clock-out").header("Authorization", "Bearer " + employeeToken))
+                .andExpect(status().isOk());
+
+        String hrToken = createUserAndGetToken("hrczas2@example.com", Role.HR);
+
+        mockMvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + hrToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].userFirstName").value("Jan"))
+                .andExpect(jsonPath("$[0].userLastName").value("Kowalski"));
+    }
+
+    @Test
+    void listManaged_asEmployee_returnsForbidden() throws Exception {
+        String token = registerAndGetToken("czaspracy10@example.com");
+
+        mockMvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listManaged_requiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/time-entries")).andExpect(status().isForbidden());
+    }
 }

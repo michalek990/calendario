@@ -3,11 +3,14 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LeaveRequestsPage } from './pages/LeaveRequestsPage'
-import { PendingApprovalsPage } from './pages/PendingApprovalsPage'
+import { TeamManagementPage } from './pages/TeamManagementPage'
 import { TimeTrackingPage } from './pages/TimeTrackingPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { NotificationsPage } from './pages/NotificationsPage'
+import { AdminUsersPage } from './pages/AdminUsersPage'
+import { AdminUserEditPage } from './pages/AdminUserEditPage'
+import { AdminFacilitiesPage } from './pages/AdminFacilitiesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import './App.css'
@@ -35,10 +38,10 @@ function App() {
         }
       />
       <Route
-        path="/leave-requests/pending"
+        path="/team"
         element={
           <ProtectedRoute allowedRoles={['MANAGER', 'HR', 'ADMIN']}>
-            <PendingApprovalsPage />
+            <TeamManagementPage />
           </ProtectedRoute>
         }
       />
@@ -79,6 +82,30 @@ function App() {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users/:id"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminUserEditPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/facilities"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminFacilitiesPage />
           </ProtectedRoute>
         }
       />

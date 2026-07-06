@@ -95,41 +95,51 @@ export function LeaveRequestsPage() {
         </section>
       )}
 
-      <div className="centered-form-wrapper">
-        <form className="card-form" onSubmit={handleSubmit}>
-          <h2>Złóż nowy wniosek</h2>
+      <section className="settings-section">
+        <h2>Złóż nowy wniosek</h2>
 
-          <label htmlFor="type">Typ</label>
-          <select id="type" value={type} onChange={(e) => setType(e.target.value as LeaveType)}>
-            {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+        <form className="wide-form" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="type">Typ</label>
+            <select id="type" value={type} onChange={(e) => setType(e.target.value as LeaveType)}>
+              {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <label htmlFor="startDate">Od</label>
-          <input
-            id="startDate"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
-          />
+          <div>
+            <label htmlFor="startDate">Od</label>
+            <input
+              id="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />
+          </div>
 
-          <label htmlFor="endDate">Do</label>
-          <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+          <div>
+            <label htmlFor="endDate">Do</label>
+            <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+          </div>
 
-          <label htmlFor="reason">Powód (opcjonalnie)</label>
-          <input id="reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <div>
+            <label htmlFor="reason">Powód (opcjonalnie)</label>
+            <input id="reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} />
+          </div>
 
           {error && <p className="auth-error">{error}</p>}
 
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Wysyłanie…' : 'Złóż wniosek'}
-          </button>
+          <div className="wide-form-actions">
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Wysyłanie…' : 'Złóż wniosek'}
+            </button>
+          </div>
         </form>
-      </div>
+      </section>
 
       <section className="list-section">
         <h2>Twoje wnioski</h2>

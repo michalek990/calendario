@@ -2,6 +2,7 @@ package com.calendario.hrnest.infrastructure.persistence;
 
 import com.calendario.hrnest.domain.user.User;
 import com.calendario.hrnest.domain.user.UserRepository;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +30,13 @@ public class UserRepositoryAdapter implements UserRepository {
     @Override
     public Optional<User> findById(Long id) {
         return springDataUserRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public List<User> findAll() {
+        return springDataUserRepository.findAll().stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     @Override

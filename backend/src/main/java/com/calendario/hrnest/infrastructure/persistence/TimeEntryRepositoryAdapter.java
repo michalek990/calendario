@@ -21,8 +21,20 @@ public class TimeEntryRepositoryAdapter implements TimeEntryRepository {
     }
 
     @Override
+    public Optional<TimeEntry> findById(Long id) {
+        return springDataTimeEntryRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
     public Optional<TimeEntry> findOpenEntryByUserId(Long userId) {
         return springDataTimeEntryRepository.findFirstByUserIdAndClockOutIsNull(userId).map(this::toDomain);
+    }
+
+    @Override
+    public List<TimeEntry> findAll() {
+        return springDataTimeEntryRepository.findAll().stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     @Override

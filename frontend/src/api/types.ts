@@ -81,6 +81,20 @@ export interface TimeEntry {
   projectId: number | null
 }
 
+export interface ManagedTimeEntry {
+  id: number
+  userId: number
+  userFirstName: string | null
+  userLastName: string | null
+  userEmail: string | null
+  clockIn: string
+  clockOut: string | null
+  breakMinutes: number
+  totalMinutes: number | null
+  notes: string | null
+  projectId: number | null
+}
+
 export interface UserProfile {
   id: number
   email: string
@@ -111,6 +125,24 @@ export interface UpdateOrganizationPayload {
   department?: string | null
   facility?: string | null
   supervisorId?: number | null
+}
+
+export interface UpdateRolePayload {
+  role: Role
+}
+
+export interface LogTimeEntryPayload {
+  clockIn: string
+  clockOut: string
+  breakMinutes?: number
+  projectId?: number | null
+}
+
+export interface UpdateTimeEntryPayload {
+  clockIn: string
+  clockOut: string | null
+  breakMinutes?: number
+  projectId?: number | null
 }
 
 export type NotificationType = 'LEAVE_REQUEST_APPROVED' | 'LEAVE_REQUEST_REJECTED'

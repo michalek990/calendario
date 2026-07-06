@@ -6,6 +6,7 @@ import com.calendario.hrnest.domain.project.exception.ProjectNotFoundException;
 import com.calendario.hrnest.domain.timetracking.TimeEntry;
 import com.calendario.hrnest.domain.timetracking.TimeEntryRepository;
 import com.calendario.hrnest.domain.timetracking.exception.TimeEntryAlreadyOpenException;
+import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -23,11 +24,16 @@ public class ClockInUseCase {
     }
 
     public TimeEntryView execute() {
-        return execute(null);
+        return execute(null, null);
     }
 
     /** Rozpoczyna wpis, opcjonalnie przypisany do projektu (walidowany, jeśli podany). */
     public TimeEntryView execute(Long projectId) {
+        return execute(projectId, null);
+    }
+
+    /** Rozpoczyna wpis o podanej chwili ({@code at}), albo o teraz, jeśli {@code at} jest null. */
+    public TimeEntryView execute(Long projectId, Instant at) {
         Long userId = currentUserProvider.currentUserId();
 
         if (timeEntryRepository.findOpenEntryByUserId(userId).isPresent()) {
@@ -38,7 +44,7 @@ public class ClockInUseCase {
             throw new ProjectNotFoundException(projectId);
         }
 
-        TimeEntry saved = timeEntryRepository.save(TimeEntry.clockIn(userId, projectId));
+        TimeEntry saved = timeEntryRepository.save(TimeEntry.clockIn(userId, projectId, at));
 
         return TimeEntryView.from(saved);
     }

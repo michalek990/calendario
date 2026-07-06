@@ -5,14 +5,16 @@ import { listMyNotifications } from '../api/notifications'
 import { UserAvatarMenu } from './UserAvatarMenu'
 import {
   IconBell,
+  IconBuilding,
   IconCalendar,
-  IconCheckCircle,
   IconClock,
   IconFolder,
   IconHome,
   IconLogOut,
   IconSettings,
+  IconShield,
   IconUser,
+  IconUsers,
 } from './icons'
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -57,8 +59,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <IconCalendar /> <span>Wnioski urlopowe</span>
           </NavLink>
           {hasAnyRole('MANAGER', 'HR', 'ADMIN') && (
-            <NavLink to="/leave-requests/pending" className="sidebar-link">
-              <IconCheckCircle /> <span>Do zatwierdzenia</span>
+            <NavLink to="/team" className="sidebar-link">
+              <IconUsers /> <span>Zespół</span>
             </NavLink>
           )}
           <NavLink to="/projects" className="sidebar-link">
@@ -74,6 +76,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <NavLink to="/settings" className="sidebar-link">
             <IconSettings /> <span>Ustawienia</span>
           </NavLink>
+          {hasAnyRole('ADMIN') && (
+            <NavLink to="/admin/users" className="sidebar-link">
+              <IconShield /> <span>Administracja</span>
+            </NavLink>
+          )}
+          {hasAnyRole('ADMIN') && (
+            <NavLink to="/admin/facilities" className="sidebar-link">
+              <IconBuilding /> <span>Zakłady</span>
+            </NavLink>
+          )}
         </nav>
 
         <button className="sidebar-logout" onClick={logout}>

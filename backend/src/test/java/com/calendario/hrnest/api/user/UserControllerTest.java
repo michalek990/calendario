@@ -1,5 +1,6 @@
 package com.calendario.hrnest.api.user;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -153,5 +154,52 @@ class UserControllerTest {
                                 {"birthDate":"2999-01-01"}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listAll_asHr_returnsAllUsers() throws Exception {
+        RegisteredUser hr = createUserAndGetToken("hr3@example.com", Role.HR);
+        registerEmployeeAndGetToken("profil7@example.com");
+
+        mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + hr.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(greaterThanOrEqualTo(2))));
+    }
+
+    @Test
+    void listAll_asEmployee_isForbidden() throws Exception {
+        RegisteredUser employee = registerEmployeeAndGetToken("profil8@example.com");
+
+        mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + employee.token()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateRole_asAdmin_changesRole() throws Exception {
+        RegisteredUser admin = createUserAndGetToken("admin1@example.com", Role.ADMIN);
+        RegisteredUser employee = registerEmployeeAndGetToken("profil9@example.com");
+
+        mockMvc.perform(patch("/api/users/" + employee.id() + "/role")
+                        .header("Authorization", "Bearer " + admin.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"MANAGER"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("MANAGER"));
+    }
+
+    @Test
+    void updateRole_asHr_isForbidden() throws Exception {
+        RegisteredUser hr = createUserAndGetToken("hr4@example.com", Role.HR);
+        RegisteredUser employee = registerEmployeeAndGetToken("profil10@example.com");
+
+        mockMvc.perform(patch("/api/users/" + employee.id() + "/role")
+                        .header("Authorization", "Bearer " + hr.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"MANAGER"}
+                                """))
+                .andExpect(status().isForbidden());
     }
 }

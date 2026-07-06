@@ -99,10 +99,40 @@ export function IconLogOut(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconShield(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3.5 5 6v5.5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6l-7-2.5Z" />
+      <path d="M9 12l2.2 2.2L15.5 9.5" />
+    </Icon>
+  )
+}
+
+export function IconUsers(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="9" cy="8.2" r="3.2" />
+      <path d="M3 19c0-3.5 2.7-5.3 6-5.3s6 1.8 6 5.3" />
+      <path d="M16 8.6a2.9 2.9 0 1 0 0-5.8" />
+      <path d="M21 19c0-3-1.9-4.7-4.5-5.1" />
+    </Icon>
+  )
+}
+
 export function IconChevronDown(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props} width="14" height="14">
       <path d="M5 8.5l5 5 5-5" />
+    </Icon>
+  )
+}
+
+export function IconBuilding(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="4.5" y="3.5" width="10" height="17" rx="1" />
+      <path d="M14.5 10.5h5v10h-5" />
+      <path d="M7.5 7.5h.01M11 7.5h.01M7.5 11h.01M11 11h.01M7.5 14.5h.01M11 14.5h.01" />
     </Icon>
   )
 }

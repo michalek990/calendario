@@ -70,6 +70,19 @@ class UserTest {
     }
 
     @Test
+    void updateRole_changesRole_keepsOtherFields() {
+        User user = User.reconstitute(1L, "jan@example.com", "hash", "Jan", "Kowalski", Role.EMPLOYEE,
+                "Programista", "IT", "Warszawa", 5L, Instant.now());
+
+        User updated = user.updateRole(Role.MANAGER);
+
+        assertThat(updated.getRole()).isEqualTo(Role.MANAGER);
+        assertThat(updated.getPosition()).isEqualTo("Programista");
+        assertThat(updated.getDepartment()).isEqualTo("IT");
+        assertThat(updated.getSupervisorId()).isEqualTo(5L);
+    }
+
+    @Test
     void recordLogin_setsLastLoginAt() {
         User user = User.reconstitute(1L, "jan@example.com", "hash", "Jan", "Kowalski", Role.EMPLOYEE,
                 Instant.now());

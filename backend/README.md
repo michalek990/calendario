@@ -38,7 +38,8 @@ com.calendario.hrnest
 │   │   ├── UserRepository.java    # PORT — interfejs, bez śladu Spring Data
 │   │   └── exception/             # EmailAlreadyExistsException, InvalidCredentialsException,
 │   │                               # UserNotFoundException, ForbiddenUserActionException,
-│   │                               # InvalidSupervisorAssignmentException, InvalidBirthDateException
+│   │                               # InvalidSupervisorAssignmentException, InvalidBirthDateException,
+│   │                               # ForbiddenRoleChangeException
 │   ├── notification/
 │   │   ├── Notification.java          # agregat, powiadomienie w aplikacji
 │   │   ├── NotificationType.java      # enum: LEAVE_REQUEST_APPROVED, LEAVE_REQUEST_REJECTED
@@ -142,10 +143,9 @@ Domenowy `domain.user.User` jest niemutowalny i nie ma żadnych adnotacji —
 | `HR` | Dział kadr — zatwierdza/odrzuca wnioski dowolnego pracownika, zarządza danymi organizacyjnymi |
 | `ADMIN` | Administrator systemu — te same uprawnienia co `HR`, plus pełny dostęp do systemu |
 
-Rejestracja (`/api/auth/register`) zawsze tworzy `EMPLOYEE` — nadanie roli
-`MANAGER`/`HR`/`ADMIN` na tym etapie nie ma dedykowanego endpointu (poza
-zakresem, podobnie jak `LeaveBalance`); w testach/dev robione bezpośrednio
-przez `UserRepository`.
+Rejestracja (`/api/auth/register`) zawsze tworzy `EMPLOYEE`. Zmianę roli
+istniejącego użytkownika obsługuje `PATCH /api/users/{id}/role` (wyłącznie
+`ADMIN`) — patrz [Moduł: Profil użytkownika](#moduł-profil-użytkownika).
 
 Dane organizacyjne (`position`/`department`/`facility`/`supervisorId`) są
 `null` dla świeżo zarejestrowanego użytkownika — rejestracja zna tylko dane
@@ -311,19 +311,23 @@ wysyła e-mail do wnioskodawcy — patrz [Moduł: Powiadomienia](#moduł-powiado
 ## Moduł: Time Tracking (czas pracy)
 
 Tabela `time_entries`. Bez raportów/agregacji miesięcznych na tym etapie —
-clock-in/clock-out, lista własnych wpisów i (nowo) opcjonalne przypisanie
-wpisu do projektu.
+clock-in/clock-out (na żywo albo "log" z ręcznie podanymi godzinami), lista
+własnych wpisów, opcjonalne przypisanie wpisu do projektu, oraz — dla
+HR/MANAGER/ADMIN — podgląd i korekta wpisów wszystkich pracowników.
 
 | Endpoint | Opis | Uprawnienia |
 |---|---|---|
-| `POST /api/time-entries/clock-in` | Otwiera nowy wpis, opcjonalnie z `projectId` (błąd 409 jeśli już jest otwarty, 404 jeśli projekt nie istnieje) | dowolny zalogowany |
-| `POST /api/time-entries/clock-out` | Zamyka otwarty wpis (błąd 409 jeśli brak otwartego) | dowolny zalogowany |
+| `POST /api/time-entries/clock-in` | Otwiera nowy wpis; opcjonalnie `projectId` i/lub `clockIn` (własna godzina rozpoczęcia zamiast "teraz") — błąd 409 jeśli już jest otwarty wpis, 404 jeśli projekt nie istnieje | dowolny zalogowany |
+| `POST /api/time-entries/clock-out` | Zamyka otwarty wpis; opcjonalnie `clockOut` (własna godzina zakończenia) — błąd 409 jeśli brak otwartego wpisu | dowolny zalogowany |
+| `POST /api/time-entries/log` | Rejestruje już zakończony wpis wprost (`clockIn`+`clockOut` obowiązkowe) — bez przechodzenia przez clock-in/clock-out "na żywo" | dowolny zalogowany |
+| `PUT /api/time-entries/{id}` | Poprawia godziny/przerwę/projekt istniejącego wpisu | właściciel wpisu / `MANAGER` / `HR` / `ADMIN` |
 | `GET /api/time-entries/me` | Lista własnych wpisów | dowolny zalogowany |
 | `GET /api/time-entries/me/by-project` | Własny czas pracy zsumowany per projekt (tylko zamknięte wpisy) | dowolny zalogowany |
+| `GET /api/time-entries` | Wpisy **wszystkich** pracowników, wzbogacone o imię/nazwisko/e-mail (`ManagedTimeEntryView`) — do zakładki zarządzania zespołem | `MANAGER` / `HR` / `ADMIN` (bez ograniczenia do bezpośrednich podwładnych, w przeciwieństwie do wniosków urlopowych) |
 
 ```jsonc
 // POST /api/time-entries/clock-in
-{ "projectId": 3 }   // ciało opcjonalne — brak body lub projectId:null = wpis bez projektu
+{ "projectId": 3, "clockIn": "2026-08-03T08:00:00Z" }   // całe ciało opcjonalne
 // -> 201 { "id": 1, "userId": 5, "clockIn": "...", "clockOut": null, "breakMinutes": 0,
 //          "totalMinutes": null, "projectId": 3 }
 // -> 404 gdy projectId nie istnieje
@@ -331,16 +335,36 @@ wpisu do projektu.
 // POST /api/time-entries/clock-out
 // -> 200 { ..., "clockOut": "...", "totalMinutes": 480 }
 
+// POST /api/time-entries/log
+{ "clockIn": "2026-08-03T08:00:00Z", "clockOut": "2026-08-03T16:00:00Z", "breakMinutes": 30, "projectId": 3 }
+// -> 201 <TimeEntryView>  |  400 gdy clockOut nie jest po clockIn  |  404 gdy projectId nie istnieje
+
+// PUT /api/time-entries/5
+{ "clockIn": "2026-08-03T08:00:00Z", "clockOut": "2026-08-03T15:30:00Z", "breakMinutes": 30, "projectId": null }
+// -> 200 <TimeEntryView>  |  400 gdy clockOut nie jest po clockIn  |  404 gdy wpis lub projekt nie istnieje
+//    403 gdy wywołujący nie jest właścicielem wpisu ani MANAGER/HR/ADMIN
+
 // GET /api/time-entries/me/by-project
 // -> 200 [ { "projectId": 3, "projectName": "Kalendario", "totalMinutes": 960, "entryCount": 2 } ]
+
+// GET /api/time-entries (wymaga MANAGER/HR/ADMIN)
+// -> 200 [ { "id": 5, "userId": 8, "userFirstName": "Jan", "userLastName": "Kowalski",
+//            "userEmail": "jan@example.com", "clockIn": "...", "clockOut": "...", ... } ]
 ```
 
 Błędy mapowane przez dedykowany `api.timetracking.TimeTrackingExceptionHandler`
 (analogicznie do modułu Leave — każdy moduł ma własny handler, żeby uniknąć
 współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułami);
-`ProjectNotFoundException` z clock-in jest jednak mapowany przez
+`ProjectNotFoundException` z clock-in/log/update jest jednak mapowany przez
 `api.project.ProjectExceptionHandler` (jeden `@RestControllerAdvice` obsługuje
 dany wyjątek niezależnie od tego, który kontroler go rzucił).
+
+**Uwaga o zakresie `GET /api/time-entries`.** W przeciwieństwie do wniosków
+urlopowych (gdzie `MANAGER` widzi tylko bezpośrednich podwładnych — patrz
+[Moduł: Leave Requests](#moduł-leave-requests-wnioski-urlopowe)),
+`ListManagedTimeEntriesUseCase` traktuje `MANAGER`/`HR`/`ADMIN` jednakowo i
+zwraca wpisy wszystkich pracowników — filtrowanie po zakładzie/zespole robi
+frontend (`AdminFacilitiesPage`), nie backend.
 
 ## Moduł: Profil użytkownika
 
@@ -357,7 +381,9 @@ podległości.
 | Endpoint | Opis | Uprawnienia |
 |---|---|---|
 | `GET /api/users/me/profile` | Pełny profil zalogowanego użytkownika: dane organizacyjne, przełożony (id + imię i nazwisko), czy sam jest przełożonym, dane personalne, ostatnie logowanie | dowolny zalogowany |
+| `GET /api/users` | Lista wszystkich użytkowników (pełny profil każdego, posortowana po nazwisku/imieniu) — do panelu administracyjnego | `HR` / `ADMIN` |
 | `PATCH /api/users/{id}/profile` | Ustawia stanowisko/dział/zakład/przełożonego wskazanego użytkownika | `HR` / `ADMIN` |
+| `PATCH /api/users/{id}/role` | Zmienia rolę wskazanego użytkownika (`EMPLOYEE`/`MANAGER`/`HR`/`ADMIN`) | `ADMIN` |
 | `PATCH /api/users/me/personal-info` | Ustawia własną datę urodzenia/telefon/awatar | dowolny zalogowany (tylko dla siebie) |
 
 ```jsonc
@@ -370,20 +396,30 @@ podległości.
 //   "lastLoginAt": "2026-07-06T08:00:00Z"
 // }
 
+// GET /api/users (wymaga HR lub ADMIN)
+// -> 200 [ <UserProfileView>, <UserProfileView>, ... ]  |  403 gdy wywołujący nie jest HR/ADMIN
+
 // PATCH /api/users/{id}/profile (wymaga HR lub ADMIN)
 { "position": "Programista", "department": "IT", "facility": "Warszawa", "supervisorId": 2 }
 // -> 200 <UserProfileView>  |  400 gdy supervisorId == id (nie można być swoim przełożonym)
 //    403 gdy wywołujący nie jest HR/ADMIN  |  404 gdy użytkownik lub przełożony nie istnieje
+
+// PATCH /api/users/{id}/role (wymaga ADMIN)
+{ "role": "MANAGER" }
+// -> 200 <UserProfileView>  |  403 gdy wywołujący nie jest ADMIN  |  404 gdy użytkownik nie istnieje
 
 // PATCH /api/users/me/personal-info (dowolny zalogowany, tylko własne dane)
 { "birthDate": "1990-05-01", "phoneNumber": "+48123456789", "avatarUrl": "https://.../a.png" }
 // -> 200 <UserProfileView>  |  400 gdy birthDate w przyszłości
 ```
 
-Oba endpointy `PATCH` nadpisują swój zestaw pól naraz, nie merguje się
-częściowo — np. `supervisorId: null` jawnie usuwa przełożonego. Błędy
-mapowane w `GlobalExceptionHandler` (ten moduł nie ma własnego handlera —
-analogicznie do `EmailAlreadyExistsException`/`InvalidCredentialsException`,
+`PATCH /api/users/{id}/profile` i `PATCH /api/users/{id}/role` nadpisują swój
+zestaw pól naraz, nie merguje się częściowo — np. `supervisorId: null` jawnie
+usuwa przełożonego. Zmiana roli jest celowo osobnym, węższym endpointem
+(tylko `ADMIN`, nie `HR`) — bardziej wrażliwa operacja niż dane organizacyjne,
+stąd `ForbiddenRoleChangeException` zamiast dzielenia wyjątku z resztą
+profilu. Błędy mapowane w `GlobalExceptionHandler` (ten moduł nie ma własnego
+handlera — analogicznie do `EmailAlreadyExistsException`/`InvalidCredentialsException`,
 wyjątki `domain.user.exception` trafiają tam).
 
 ## Moduł: Powiadomienia
@@ -469,7 +505,7 @@ Błędy mapowane przez dedykowany `api.project.ProjectExceptionHandler`.
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
 | `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest`, `NotificationTest`, `ProjectTest`, `AnnualLeaveLimitPolicyTest` |
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `GetAnnualLeaveSummaryUseCaseTest`, `GetMyProfileUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest`, `CreateProjectUseCaseTest`, `ListProjectsUseCaseTest`, `GetProjectTimeSummaryUseCaseTest`, `ListMyTimeByProjectUseCaseTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ClockOutUseCaseTest`, `ListMyLeaveRequestsUseCaseTest`, `ListMyTimeEntriesUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `ListManagedTimeEntriesUseCaseTest`, `LogTimeEntryUseCaseTest`, `UpdateTimeEntryUseCaseTest`, `GetAnnualLeaveSummaryUseCaseTest`, `GetMyProfileUseCaseTest`, `ListAllUsersUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateUserRoleUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest`, `CreateProjectUseCaseTest`, `ListProjectsUseCaseTest`, `GetProjectTimeSummaryUseCaseTest`, `ListMyTimeByProjectUseCaseTest` |
 | `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest`, `NotificationRepositoryAdapterTest`, `ProjectRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
 | `infrastructure.email` | Unit (bez Springa) | `LoggingEmailSenderTest` |
@@ -499,9 +535,10 @@ pominięciem endpointu rejestracji.
 | Roczny limit urlopu wypoczynkowego (26 dni, VACATION+ON_DEMAND) | ✅ |
 | Roczne podsumowanie: praca zdalna vs pozostałe nieobecności (`/api/leave-requests/me/annual-summary`) | ✅ |
 | Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ |
-| Time tracking | ✅ |
+| Time tracking (clock-in/out, log ręczny, korekta wpisu, podgląd zespołu) | ✅ |
 | Projekty + rejestrowanie czasu w projekcie + podsumowania (własne i zbiorcze) | ✅ |
 | Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony) | ✅ |
 | Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ |
+| Lista wszystkich użytkowników i zmiana roli (`GET /api/users`, `PATCH /api/users/{id}/role`) | ✅ |
 | Powiadomienia w aplikacji o decyzji na wniosku | ✅ |
 | Powiadomienia mailowe o decyzji na wniosku (feature-flag `app.mail.enabled`) | ✅ |

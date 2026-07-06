@@ -108,6 +108,12 @@ public final class User {
                 supervisorId, birthDate, phoneNumber, avatarUrl, lastLoginAt, createdAt);
     }
 
+    /** Zmienia rolę użytkownika (EMPLOYEE/MANAGER/HR/ADMIN) — wyłącznie ADMIN, sprawdzane w use case'ie. */
+    public User updateRole(Role newRole) {
+        return new User(id, email, passwordHash, firstName, lastName, newRole, position, department, facility,
+                supervisorId, birthDate, phoneNumber, avatarUrl, lastLoginAt, createdAt);
+    }
+
     /** Zwraca kopię z zaktualizowanym znacznikiem ostatniego logowania. */
     public User recordLogin(Instant loginAt) {
         return new User(id, email, passwordHash, firstName, lastName, role, position, department, facility,
