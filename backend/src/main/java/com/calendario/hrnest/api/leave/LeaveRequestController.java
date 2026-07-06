@@ -6,6 +6,7 @@ import com.calendario.hrnest.application.leave.CreateLeaveRequestUseCase;
 import com.calendario.hrnest.application.leave.LeaveRequestView;
 import com.calendario.hrnest.application.leave.ListMyLeaveRequestsUseCase;
 import com.calendario.hrnest.application.leave.ListPendingLeaveRequestsUseCase;
+import com.calendario.hrnest.application.leave.ListRecentLeaveActivityUseCase;
 import com.calendario.hrnest.application.leave.RejectLeaveRequestUseCase;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -28,18 +29,21 @@ public class LeaveRequestController {
     private final RejectLeaveRequestUseCase rejectLeaveRequestUseCase;
     private final ListMyLeaveRequestsUseCase listMyLeaveRequestsUseCase;
     private final ListPendingLeaveRequestsUseCase listPendingLeaveRequestsUseCase;
+    private final ListRecentLeaveActivityUseCase listRecentLeaveActivityUseCase;
 
     public LeaveRequestController(
             CreateLeaveRequestUseCase createLeaveRequestUseCase,
             ApproveLeaveRequestUseCase approveLeaveRequestUseCase,
             RejectLeaveRequestUseCase rejectLeaveRequestUseCase,
             ListMyLeaveRequestsUseCase listMyLeaveRequestsUseCase,
-            ListPendingLeaveRequestsUseCase listPendingLeaveRequestsUseCase) {
+            ListPendingLeaveRequestsUseCase listPendingLeaveRequestsUseCase,
+            ListRecentLeaveActivityUseCase listRecentLeaveActivityUseCase) {
         this.createLeaveRequestUseCase = createLeaveRequestUseCase;
         this.approveLeaveRequestUseCase = approveLeaveRequestUseCase;
         this.rejectLeaveRequestUseCase = rejectLeaveRequestUseCase;
         this.listMyLeaveRequestsUseCase = listMyLeaveRequestsUseCase;
         this.listPendingLeaveRequestsUseCase = listPendingLeaveRequestsUseCase;
+        this.listRecentLeaveActivityUseCase = listRecentLeaveActivityUseCase;
     }
 
     @PostMapping
@@ -57,6 +61,11 @@ public class LeaveRequestController {
     @GetMapping("/pending")
     public ResponseEntity<List<LeaveRequestView>> listPending() {
         return ResponseEntity.ok(listPendingLeaveRequestsUseCase.execute());
+    }
+
+    @GetMapping("/me/recent-activity")
+    public ResponseEntity<List<LeaveRequestView>> recentActivity() {
+        return ResponseEntity.ok(listRecentLeaveActivityUseCase.execute());
     }
 
     @PatchMapping("/{id}/approve")

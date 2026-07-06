@@ -138,4 +138,36 @@ class LeaveRequestControllerTest {
         // odrzuca anonimowe żądanie do chronionego zasobu z 403, nie 401.
         mockMvc.perform(get("/api/leave-requests/me")).andExpect(status().isForbidden());
     }
+
+    @Test
+    void createLeaveRequest_acceptsRemoteWorkType() throws Exception {
+        String token = registerEmployeeAndGetToken("pracownik6@example.com");
+
+        mockMvc.perform(post("/api/leave-requests")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"REMOTE_WORK","startDate":"2026-08-03","endDate":"2026-08-03","reason":"Praca z domu"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("REMOTE_WORK"));
+    }
+
+    @Test
+    void recentActivity_returnsOwnRequests_mostRecentFirst() throws Exception {
+        String token = registerEmployeeAndGetToken("pracownik7@example.com");
+
+        mockMvc.perform(post("/api/leave-requests")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"ON_DEMAND","startDate":"2026-08-03","endDate":"2026-08-03"}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/leave-requests/me/recent-activity").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].type").value("ON_DEMAND"));
+    }
 }

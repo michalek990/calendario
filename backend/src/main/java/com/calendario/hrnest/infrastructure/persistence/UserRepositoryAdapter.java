@@ -27,8 +27,18 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public Optional<User> findById(Long id) {
+        return springDataUserRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
     public boolean existsByEmail(String email) {
         return springDataUserRepository.existsByEmail(email);
+    }
+
+    @Override
+    public boolean existsBySupervisorId(Long supervisorId) {
+        return springDataUserRepository.existsBySupervisorId(supervisorId);
     }
 
     private UserJpaEntity toEntity(User user) {
@@ -39,6 +49,10 @@ public class UserRepositoryAdapter implements UserRepository {
         entity.setFirstName(user.getFirstName());
         entity.setLastName(user.getLastName());
         entity.setRole(user.getRole());
+        entity.setPosition(user.getPosition());
+        entity.setDepartment(user.getDepartment());
+        entity.setFacility(user.getFacility());
+        entity.setSupervisorId(user.getSupervisorId());
         entity.setCreatedAt(user.getCreatedAt());
         return entity;
     }
@@ -51,6 +65,10 @@ public class UserRepositoryAdapter implements UserRepository {
                 entity.getFirstName(),
                 entity.getLastName(),
                 entity.getRole(),
+                entity.getPosition(),
+                entity.getDepartment(),
+                entity.getFacility(),
+                entity.getSupervisorId(),
                 entity.getCreatedAt());
     }
 }

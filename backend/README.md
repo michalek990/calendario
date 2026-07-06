@@ -36,7 +36,9 @@ com.calendario.hrnest
 │       ├── User.java              # agregat, tworzony wyłącznie przez User.register(...) / reconstitute(...)
 │       ├── Role.java              # enum: EMPLOYEE, MANAGER, HR_ADMIN
 │       ├── UserRepository.java    # PORT — interfejs, bez śladu Spring Data
-│       └── exception/             # EmailAlreadyExistsException, InvalidCredentialsException
+│       └── exception/             # EmailAlreadyExistsException, InvalidCredentialsException,
+│                                   # UserNotFoundException, ForbiddenUserActionException,
+│                                   # InvalidSupervisorAssignmentException
 │
 ├── application/        # Use Case'y — orkiestracja, zależą TYLKO od domain
 │   └── auth/
@@ -86,10 +88,22 @@ com.calendario.hrnest
 | passwordHash | String | not null, hash BCrypt |
 | firstName / lastName | String | not null |
 | role | Role (enum) | EMPLOYEE / MANAGER / HR_ADMIN |
+| position | String | stanowisko, nullable — uzupełniane przez HR po rejestracji |
+| department | String | dział, nullable |
+| facility | String | zakład / lokalizacja, nullable |
+| supervisorId | Long | id przełożonego (`users.id`), nullable — brak = brak przełożonego |
 | createdAt | Instant | ustawiane w `@PrePersist` |
 
 Domenowy `domain.user.User` jest niemutowalny i nie ma żadnych adnotacji —
 `UserRepositoryAdapter` mapuje go do/z `UserJpaEntity` na granicy warstwy infrastructure.
+
+Dane organizacyjne (`position`/`department`/`facility`/`supervisorId`) są
+`null` dla świeżo zarejestrowanego użytkownika — rejestracja (`/api/auth/register`)
+zna tylko dane logowania. Uzupełnia je HR przez
+`PATCH /api/users/{id}/profile`, patrz [Moduł: Profil użytkownika](#moduł-profil-użytkownika).
+Agregat pilnuje jednego niezmiennika: `User.updateOrganization(...)` rzuca
+`InvalidSupervisorAssignmentException`, jeśli ktoś próbuje ustawić użytkownika
+jako przełożonego samego siebie.
 
 ## Moduł: Auth (JWT)
 
@@ -134,14 +148,33 @@ zależności od Spring Security — używają go też moduły Leave i Time Track
 
 ## Moduł: Leave Requests (wnioski urlopowe)
 
-Tabela `leave_requests`. Typ urlopu jako enum (`VACATION`, `SICK_LEAVE`,
-`UNPAID`, `OTHER`) — bez osobnej konfigurowalnej tabeli `leave_types` na tym
-etapie (celowo odłożone, podobnie jak limity/salda urlopowe `LeaveBalance`).
+Tabela `leave_requests`. Typ urlopu jako enum `LeaveType` — bez osobnej
+konfigurowalnej tabeli `leave_types` na tym etapie (celowo odłożone, podobnie
+jak limity/salda urlopowe `LeaveBalance`):
+
+| Wartość enum | Wniosek |
+|---|---|
+| `VACATION` | Urlop wypoczynkowy |
+| `ON_DEMAND` | Urlop na żądanie |
+| `SICK_LEAVE` | Zwolnienie lekarskie |
+| `UNPAID` | Urlop bezpłatny |
+| `CHILDCARE_UNPAID` | Opieka nad dzieckiem — urlop bezpłatny |
+| `OCCASIONAL` | Urlop okolicznościowy |
+| `REMOTE_WORK` | Praca z domu / home office |
+| `HOLIDAY_COMPENSATION` | Odbiór dnia wolnego za pracę w święto |
+| `BUSINESS_TRIP` | Delegacja / podróż służbowa |
+| `OTHER` | Inne |
+
+Praca z domu (`REMOTE_WORK`) jest celowo modelowana jako `LeaveType`, nie
+osobny agregat — z punktu widzenia procesu to też "wniosek o coś, wymagający
+decyzji przełożonego", więc korzysta z tego samego cyklu życia
+(`PENDING` → `APPROVED`/`REJECTED`) i tych samych endpointów.
 
 | Endpoint | Opis | Uprawnienia |
 |---|---|---|
 | `POST /api/leave-requests` | Tworzy wniosek (status `PENDING`) | dowolny zalogowany |
 | `GET /api/leave-requests/me` | Lista własnych wniosków | dowolny zalogowany |
+| `GET /api/leave-requests/me/recent-activity` | Ostatnie zmiany na własnych wnioskach (max 10, sortowane po dacie ostatniej zmiany malejąco) | dowolny zalogowany |
 | `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` / `HR_ADMIN` |
 | `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` / `HR_ADMIN` |
 | `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` / `HR_ADMIN` |
@@ -151,6 +184,10 @@ etapie (celowo odłożone, podobnie jak limity/salda urlopowe `LeaveBalance`).
 { "type": "VACATION", "startDate": "2026-08-03", "endDate": "2026-08-07", "reason": "Wakacje" }
 // -> 201 { "id": 1, "requesterId": 5, "type": "VACATION", "startDate": "2026-08-03",
 //          "endDate": "2026-08-07", "daysCount": 5, "status": "PENDING", ... }
+
+// GET /api/leave-requests/me/recent-activity
+// -> 200 [ { "id": 3, "type": "REMOTE_WORK", "status": "APPROVED", ... }, { "id": 1, ... } ]
+// (posortowane: approvedAt jeśli późniejszy niż createdAt, inaczej createdAt — malejąco)
 ```
 
 Błędy: 400 (zły zakres dat / walidacja), 403 (rola bez uprawnień do approve/reject),
@@ -181,15 +218,48 @@ Błędy mapowane przez dedykowany `api.timetracking.TimeTrackingExceptionHandler
 (analogicznie do modułu Leave — każdy moduł ma własny handler, żeby uniknąć
 współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułami).
 
+## Moduł: Profil użytkownika
+
+Rozszerza `User` o dane organizacyjne: stanowisko, dział, zakład oraz relację
+przełożony/podwładny. "Czy jestem przełożonym" nie jest osobnym polem — liczone
+dynamicznie jako "czy istnieje użytkownik, którego `supervisorId` wskazuje na
+mnie" (`UserRepository.existsBySupervisorId`), żeby nie trzeba było
+synchronizować dwóch źródeł prawdy przy zmianie struktury podległości.
+
+| Endpoint | Opis | Uprawnienia |
+|---|---|---|
+| `GET /api/users/me/profile` | Profil zalogowanego użytkownika: stanowisko, dział, zakład, przełożony (id + imię i nazwisko), czy sam jest przełożonym | dowolny zalogowany |
+| `PATCH /api/users/{id}/profile` | Ustawia stanowisko/dział/zakład/przełożonego wskazanego użytkownika | `HR_ADMIN` |
+
+```jsonc
+// GET /api/users/me/profile
+// -> 200 {
+//   "id": 5, "email": "jan@example.com", "firstName": "Jan", "lastName": "Kowalski",
+//   "role": "EMPLOYEE", "position": "Programista", "department": "IT", "facility": "Warszawa",
+//   "isSupervisor": false, "hasSupervisor": true, "supervisorId": 2, "supervisorFullName": "Ala Szefowa"
+// }
+
+// PATCH /api/users/{id}/profile (wymaga HR_ADMIN)
+{ "position": "Programista", "department": "IT", "facility": "Warszawa", "supervisorId": 2 }
+// -> 200 <UserProfileView>  |  400 gdy supervisorId == id (nie można być swoim przełożonym)
+//    403 gdy wywołujący nie jest HR_ADMIN  |  404 gdy użytkownik lub przełożony nie istnieje
+```
+
+`PATCH` nadpisuje wszystkie cztery pola naraz (pełny zestaw danych
+organizacyjnych), nie merguje częściowo — `supervisorId: null` jawnie usuwa
+przełożonego. Błędy mapowane w `GlobalExceptionHandler` (ten moduł nie ma
+własnego handlera — analogicznie do `EmailAlreadyExistsException`/
+`InvalidCredentialsException`, wyjątki `domain.user.exception` trafiają tam).
+
 ## Testy
 
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
-| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest` |
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest` |
+| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `GetMyProfileUseCaseTest`, `UpdateUserOrganizationUseCaseTest` |
 | `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
-| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest` |
+| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest` |
 
 Uwaga: e-maile testowe w każdej klasie `@SpringBootTest` muszą być unikalne w
 całym module — Spring cache'uje kontekst (i bazę H2) między klasami testów o
@@ -209,5 +279,7 @@ pominięciem endpointu rejestracji.
 | Bootstrap projektu | ✅ |
 | Clean Architecture (domain/application/infrastructure/api) | ✅ |
 | User + JWT auth (register/login) | ✅ |
-| Leave requests | ✅ |
+| Leave requests (w tym praca z domu, urlop na żądanie, okolicznościowy, opieka nad dzieckiem bezpłatna, odbiór za święto, delegacja) | ✅ |
+| Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ |
 | Time tracking | ✅ |
+| Profil użytkownika (stanowisko, dział, zakład, przełożony) | ✅ |

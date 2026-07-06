@@ -43,6 +43,19 @@ public class UserJpaEntity {
     @Column(nullable = false)
     private Role role;
 
+    /** Stanowisko. */
+    private String position;
+
+    /** Dział. */
+    private String department;
+
+    /** Zakład / lokalizacja. */
+    private String facility;
+
+    /** Id przełożonego (users.id) — nullable, brak = brak przełożonego. */
+    @Column(name = "supervisor_id")
+    private Long supervisorId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

@@ -43,4 +43,37 @@ class UserRepositoryAdapterTest {
         assertThat(userRepositoryAdapter.existsByEmail("anna.nowak@example.com")).isTrue();
         assertThat(userRepositoryAdapter.existsByEmail("ktos.inny@example.com")).isFalse();
     }
+
+    @Test
+    void save_thenFindById_roundTripsOrganizationalFields() {
+        User supervisor = userRepositoryAdapter.save(
+                User.register("szef@example.com", "hashed", "Ala", "Szefowa"));
+
+        User user = User.register("piotr@example.com", "hashed", "Piotr", "Nowicki")
+                .updateOrganization("Programista", "IT", "Warszawa", supervisor.getId());
+        User saved = userRepositoryAdapter.save(user);
+
+        User found = userRepositoryAdapter.findById(saved.getId()).orElseThrow();
+        assertThat(found.getPosition()).isEqualTo("Programista");
+        assertThat(found.getDepartment()).isEqualTo("IT");
+        assertThat(found.getFacility()).isEqualTo("Warszawa");
+        assertThat(found.getSupervisorId()).isEqualTo(supervisor.getId());
+    }
+
+    @Test
+    void findById_returnsEmpty_whenIdDoesNotExist() {
+        assertThat(userRepositoryAdapter.findById(-1L)).isEmpty();
+    }
+
+    @Test
+    void existsBySupervisorId_trueOnlyWhenSomeoneReportsToThatUser() {
+        User supervisor = userRepositoryAdapter.save(
+                User.register("kierownik@example.com", "hashed", "Ala", "Kierownik"));
+        User subordinate = User.register("podwladny@example.com", "hashed", "Jan", "Podwladny")
+                .updateOrganization(null, null, null, supervisor.getId());
+        User savedSubordinate = userRepositoryAdapter.save(subordinate);
+
+        assertThat(userRepositoryAdapter.existsBySupervisorId(supervisor.getId())).isTrue();
+        assertThat(userRepositoryAdapter.existsBySupervisorId(savedSubordinate.getId())).isFalse();
+    }
 }

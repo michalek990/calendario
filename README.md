@@ -21,7 +21,9 @@ Calendario/
 | Moduł | Backend | Frontend |
 |---|---|---|
 | Users / Auth (register, login, zmiana hasła) | ✅ | ✅ (logowanie/rejestracja, popup profilu w navbarze, zmiana hasła w ustawieniach) |
-| Leave (wnioski urlopowe) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR_ADMIN, widoczne na kalendarzu pulpitu) |
+| Profil użytkownika (stanowisko, dział, zakład, przełożony/podwładny) | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-profil-użytkownika)) |
+| Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR_ADMIN, widoczne na kalendarzu pulpitu — nowe typy wniosków wymagają dodania ich do frontendu) |
+| Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ | — (na razie tylko API) |
 | Time Tracking (czas pracy) | ✅ | ✅ (wyśrodkowana karta rozpocznij/zakończ pracę, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
 | Ustawienia wyglądu (dark mode, czcionka, kolor wiodący) | — | ✅ (czysto frontendowe, `localStorage`) |
 
