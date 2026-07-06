@@ -9,4 +9,6 @@ interface SpringDataTimeEntryRepository extends JpaRepository<TimeEntryJpaEntity
     Optional<TimeEntryJpaEntity> findFirstByUserIdAndClockOutIsNull(Long userId);
 
     List<TimeEntryJpaEntity> findByUserId(Long userId);
+
+    List<TimeEntryJpaEntity> findByProjectId(Long projectId);
 }

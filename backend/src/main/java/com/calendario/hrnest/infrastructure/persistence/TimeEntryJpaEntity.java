@@ -36,4 +36,7 @@ public class TimeEntryJpaEntity {
     private int breakMinutes;
 
     private String notes;
+
+    @Column(name = "project_id")
+    private Long projectId;
 }

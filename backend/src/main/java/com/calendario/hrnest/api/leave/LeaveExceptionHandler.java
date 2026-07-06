@@ -1,6 +1,7 @@
 package com.calendario.hrnest.api.leave;
 
 import com.calendario.hrnest.api.ErrorResponse;
+import com.calendario.hrnest.domain.leave.exception.AnnualLeaveLimitExceededException;
 import com.calendario.hrnest.domain.leave.exception.ForbiddenLeaveActionException;
 import com.calendario.hrnest.domain.leave.exception.IllegalLeaveStateException;
 import com.calendario.hrnest.domain.leave.exception.InvalidLeaveRangeException;
@@ -31,5 +32,10 @@ public class LeaveExceptionHandler {
     @ExceptionHandler(ForbiddenLeaveActionException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenLeaveActionException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(AnnualLeaveLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleAnnualLimitExceeded(AnnualLeaveLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
     }
 }

@@ -41,4 +41,21 @@ class TimeEntryRepositoryAdapterTest {
         assertThat(adapter.findByUserId(1L)).hasSize(1);
         assertThat(adapter.findByUserId(1L).get(0).getUserId()).isEqualTo(1L);
     }
+
+    @Test
+    void save_roundTripsProjectId() {
+        TimeEntry saved = adapter.save(TimeEntry.clockIn(1L, 42L));
+
+        assertThat(saved.getProjectId()).isEqualTo(42L);
+        assertThat(adapter.findByUserId(1L).get(0).getProjectId()).isEqualTo(42L);
+    }
+
+    @Test
+    void findByProjectId_returnsOnlyEntriesForThatProject() {
+        adapter.save(TimeEntry.clockIn(1L, 42L));
+        adapter.save(TimeEntry.clockIn(2L, 43L));
+
+        assertThat(adapter.findByProjectId(42L)).hasSize(1);
+        assertThat(adapter.findByProjectId(42L).get(0).getProjectId()).isEqualTo(42L);
+    }
 }

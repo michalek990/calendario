@@ -13,30 +13,43 @@ public final class TimeEntry {
     private final Instant clockOut;
     private final int breakMinutes;
     private final String notes;
+    private final Long projectId;
 
-    private TimeEntry(Long id, Long userId, Instant clockIn, Instant clockOut, int breakMinutes, String notes) {
+    private TimeEntry(Long id, Long userId, Instant clockIn, Instant clockOut, int breakMinutes, String notes,
+                       Long projectId) {
         this.id = id;
         this.userId = userId;
         this.clockIn = clockIn;
         this.clockOut = clockOut;
         this.breakMinutes = breakMinutes;
         this.notes = notes;
+        this.projectId = projectId;
     }
 
     public static TimeEntry clockIn(Long userId) {
-        return new TimeEntry(null, userId, Instant.now(), null, 0, null);
+        return clockIn(userId, null);
+    }
+
+    /** Rozpoczyna wpis, opcjonalnie przypisany do konkretnego projektu ({@code projectId} może być null). */
+    public static TimeEntry clockIn(Long userId, Long projectId) {
+        return new TimeEntry(null, userId, Instant.now(), null, 0, null, projectId);
     }
 
     public static TimeEntry reconstitute(Long id, Long userId, Instant clockIn, Instant clockOut,
                                           int breakMinutes, String notes) {
-        return new TimeEntry(id, userId, clockIn, clockOut, breakMinutes, notes);
+        return reconstitute(id, userId, clockIn, clockOut, breakMinutes, notes, null);
+    }
+
+    public static TimeEntry reconstitute(Long id, Long userId, Instant clockIn, Instant clockOut,
+                                          int breakMinutes, String notes, Long projectId) {
+        return new TimeEntry(id, userId, clockIn, clockOut, breakMinutes, notes, projectId);
     }
 
     public TimeEntry clockOut() {
         if (clockOut != null) {
             throw new TimeEntryAlreadyClosedException();
         }
-        return new TimeEntry(id, userId, clockIn, Instant.now(), breakMinutes, notes);
+        return new TimeEntry(id, userId, clockIn, Instant.now(), breakMinutes, notes, projectId);
     }
 
     /** Minuty przepracowane (clockIn -> clockOut minus przerwa), albo null dopóki wpis jest otwarty. */
@@ -73,5 +86,9 @@ public final class TimeEntry {
 
     public String getNotes() {
         return notes;
+    }
+
+    public Long getProjectId() {
+        return projectId;
     }
 }

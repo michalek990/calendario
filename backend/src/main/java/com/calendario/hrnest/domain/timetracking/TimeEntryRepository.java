@@ -11,4 +11,6 @@ public interface TimeEntryRepository {
     Optional<TimeEntry> findOpenEntryByUserId(Long userId);
 
     List<TimeEntry> findByUserId(Long userId);
+
+    List<TimeEntry> findByProjectId(Long projectId);
 }

@@ -39,11 +39,18 @@ com.calendario.hrnest
 │   │   └── exception/             # EmailAlreadyExistsException, InvalidCredentialsException,
 │   │                               # UserNotFoundException, ForbiddenUserActionException,
 │   │                               # InvalidSupervisorAssignmentException, InvalidBirthDateException
-│   └── notification/
-│       ├── Notification.java          # agregat, powiadomienie w aplikacji
-│       ├── NotificationType.java      # enum: LEAVE_REQUEST_APPROVED, LEAVE_REQUEST_REJECTED
-│       ├── NotificationRepository.java # PORT
-│       └── exception/                 # NotificationNotFoundException, ForbiddenNotificationActionException
+│   ├── notification/
+│   │   ├── Notification.java          # agregat, powiadomienie w aplikacji
+│   │   ├── NotificationType.java      # enum: LEAVE_REQUEST_APPROVED, LEAVE_REQUEST_REJECTED
+│   │   ├── NotificationRepository.java # PORT
+│   │   └── exception/                 # NotificationNotFoundException, ForbiddenNotificationActionException
+│   ├── leave/
+│   │   └── AnnualLeaveLimitPolicy.java # roczny limit urlopu wypoczynkowego (26 dni) — czysta logika domenowa
+│   └── project/
+│       ├── Project.java               # agregat: nazwa, opis
+│       ├── ProjectRepository.java     # PORT
+│       └── exception/                 # ProjectNotFoundException, DuplicateProjectNameException,
+│                                       # ForbiddenProjectActionException, ForbiddenProjectSummaryAccessException
 │
 ├── application/        # Use Case'y — orkiestracja, zależą TYLKO od domain
 │   ├── auth/
@@ -51,16 +58,21 @@ com.calendario.hrnest
 │   │   ├── PasswordHasher.java    # PORT (strategy)
 │   │   ├── TokenProvider.java     # PORT (strategy)
 │   │   └── RegisterCommand / LoginCommand / AuthResult (DTO wewnętrzne use case'ów)
-│   └── notification/
-│       ├── EmailSender.java               # PORT (strategy) — wysyłka e-maili
-│       ├── LeaveDecisionNotifier.java      # powiadamia (w apce + mailem) o decyzji na wniosku
-│       ├── ListMyNotificationsUseCase.java / MarkNotificationAsReadUseCase.java
-│       └── NotificationView.java
+│   ├── notification/
+│   │   ├── EmailSender.java               # PORT (strategy) — wysyłka e-maili
+│   │   ├── LeaveDecisionNotifier.java      # powiadamia (w apce + mailem) o decyzji na wniosku
+│   │   ├── ListMyNotificationsUseCase.java / MarkNotificationAsReadUseCase.java
+│   │   └── NotificationView.java
+│   └── project/
+│       ├── CreateProjectUseCase.java / ListProjectsUseCase.java
+│       ├── GetProjectTimeSummaryUseCase.java  # zbiorczy czas WSZYSTKICH pracowników na projekcie
+│       └── ProjectView.java / ProjectTimeSummaryView.java
 │
 ├── infrastructure/      # Adaptery — implementacje portów, szczegóły technologiczne
 │   ├── persistence/
 │   │   ├── UserJpaEntity.java             # encja JPA (tabela `users`)
 │   │   ├── NotificationJpaEntity.java     # encja JPA (tabela `notifications`)
+│   │   ├── ProjectJpaEntity.java          # encja JPA (tabela `projects`)
 │   │   ├── SpringDataUserRepository.java  # Spring Data (package-private, szczegół implementacyjny)
 │   │   └── UserRepositoryAdapter.java     # implements domain.user.UserRepository, mapuje JPA <-> domain
 │   ├── security/
@@ -80,9 +92,12 @@ com.calendario.hrnest
     ├── auth/
     │   ├── AuthController.java            # wywołuje use case'y, nic więcej
     │   └── RegisterRequest / LoginRequest / AuthResponse (walidacja @Valid tu, nie w domenie)
-    └── notification/
-        ├── NotificationController.java
-        └── NotificationExceptionHandler.java
+    ├── notification/
+    │   ├── NotificationController.java
+    │   └── NotificationExceptionHandler.java
+    └── project/
+        ├── ProjectController.java
+        └── ProjectExceptionHandler.java
 ```
 
 ### Wzorce
@@ -230,6 +245,7 @@ decyzji przełożonego", więc korzysta z tego samego cyklu życia
 | `POST /api/leave-requests` | Tworzy wniosek (status `PENDING`) | dowolny zalogowany |
 | `GET /api/leave-requests/me` | Lista własnych wniosków | dowolny zalogowany |
 | `GET /api/leave-requests/me/recent-activity` | Ostatnie zmiany na własnych wnioskach (max 10, sortowane po dacie ostatniej zmiany malejąco) | dowolny zalogowany |
+| `GET /api/leave-requests/me/annual-summary` | Roczne podsumowanie: dni pracy zdalnej vs pozostałe nieobecności, wykorzystanie limitu urlopu wypoczynkowego | dowolny zalogowany |
 | `GET /api/leave-requests/pending` | Lista wniosków `PENDING` | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
 | `PATCH /api/leave-requests/{id}/approve` | Zatwierdza wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
 | `PATCH /api/leave-requests/{id}/reject` | Odrzuca wniosek | `MANAGER` (tylko bezpośredni podwładni) / `HR` / `ADMIN` |
@@ -242,21 +258,51 @@ podlegają temu ograniczeniu — widzą i decydują o wnioskach każdego pracown
 Próba zatwierdzenia/odrzucenia wniosku spoza swojego zespołu przez `MANAGER`
 kończy się 403, tak samo jak dla `EMPLOYEE`.
 
+**Roczny limit urlopu wypoczynkowego (26 dni).** `AnnualLeaveLimitPolicy`
+(czysta logika domenowa, bez zależności od repozytorium) pilnuje, żeby suma
+dni `VACATION` + `ON_DEMAND` (urlop na żądanie prawnie jest częścią tej samej
+puli — art. 167(2) KP) w jednym roku kalendarzowym nie przekroczyła 26 dni.
+Do sumy liczą się wnioski `PENDING` i `APPROVED` (oczekujący wniosek też
+"rezerwuje" pulę) — `REJECTED`/`CANCELLED` nie są brane pod uwagę. Rok wniosku
+wyznacza `startDate`. Sprawdzane przez `CreateLeaveRequestUseCase` **przy
+tworzeniu** wniosku — próba złożenia wniosku, który przekroczyłby limit,
+kończy się 409 z `AnnualLeaveLimitExceededException` (komunikat zawiera ile
+dni już wykorzystano i ile dodałby nowy wniosek). Limit jest współdzieloną
+stałą (`AnnualLeaveLimitPolicy.ANNUAL_VACATION_LIMIT_DAYS`), nie polem
+konfiguracyjnym — na tym etapie nie ma potrzeby różnicowania go per pracownik
+(np. wg stażu pracy).
+
 ```jsonc
 // POST /api/leave-requests
 { "type": "VACATION", "startDate": "2026-08-03", "endDate": "2026-08-07", "reason": "Wakacje" }
 // -> 201 { "id": 1, "requesterId": 5, "type": "VACATION", "startDate": "2026-08-03",
 //          "endDate": "2026-08-07", "daysCount": 5, "status": "PENDING", ... }
+// -> 409 gdy suma dni VACATION+ON_DEMAND w danym roku przekroczyłaby 26
 
 // GET /api/leave-requests/me/recent-activity
 // -> 200 [ { "id": 3, "type": "REMOTE_WORK", "status": "APPROVED", ... }, { "id": 1, ... } ]
 // (posortowane: approvedAt jeśli późniejszy niż createdAt, inaczej createdAt — malejąco)
+
+// GET /api/leave-requests/me/annual-summary?year=2026 (year opcjonalny, domyślnie bieżący rok)
+// -> 200 {
+//   "year": 2026,
+//   "daysByType": { "VACATION": 10, "REMOTE_WORK": 42 },
+//   "remoteWorkDays": 42, "otherLeaveDays": 10,
+//   "vacationDaysUsed": 10, "vacationDaysRemaining": 16, "vacationAnnualLimit": 26
+// }
 ```
+
+Podsumowanie roczne liczy tylko wnioski **`APPROVED`** (w przeciwieństwie do
+limitu przy tworzeniu, który liczy też `PENDING`) — pokazuje faktycznie
+zrealizowane dni, nie zarezerwowane. `remoteWorkDays` to dni `REMOTE_WORK`,
+`otherLeaveDays` to suma wszystkich pozostałych typów — bezpośrednia
+odpowiedź na "ile dni pracownik pracował zdalnie, a ile nie" w danym roku.
 
 Błędy: 400 (zły zakres dat / walidacja), 403 (rola/zakres bez uprawnień do
 approve/reject), 404 (brak wniosku), 409 (decyzja na wniosku, który nie jest
-już `PENDING`). Mapowane przez dedykowany `api.leave.LeaveExceptionHandler`
-(nie w `GlobalExceptionHandler`, żeby moduły mogły rozwijać się niezależnie).
+już `PENDING`, lub przekroczony roczny limit urlopu). Mapowane przez
+dedykowany `api.leave.LeaveExceptionHandler` (nie w `GlobalExceptionHandler`,
+żeby moduły mogły rozwijać się niezależnie).
 
 Po zatwierdzeniu/odrzuceniu `ApproveLeaveRequestUseCase`/`RejectLeaveRequestUseCase`
 wywołują `LeaveDecisionNotifier`, który tworzy powiadomienie w aplikacji i
@@ -265,25 +311,36 @@ wysyła e-mail do wnioskodawcy — patrz [Moduł: Powiadomienia](#moduł-powiado
 ## Moduł: Time Tracking (czas pracy)
 
 Tabela `time_entries`. Bez raportów/agregacji miesięcznych na tym etapie —
-tylko clock-in/clock-out i lista własnych wpisów.
+clock-in/clock-out, lista własnych wpisów i (nowo) opcjonalne przypisanie
+wpisu do projektu.
 
 | Endpoint | Opis | Uprawnienia |
 |---|---|---|
-| `POST /api/time-entries/clock-in` | Otwiera nowy wpis (błąd 409 jeśli już jest otwarty) | dowolny zalogowany |
+| `POST /api/time-entries/clock-in` | Otwiera nowy wpis, opcjonalnie z `projectId` (błąd 409 jeśli już jest otwarty, 404 jeśli projekt nie istnieje) | dowolny zalogowany |
 | `POST /api/time-entries/clock-out` | Zamyka otwarty wpis (błąd 409 jeśli brak otwartego) | dowolny zalogowany |
 | `GET /api/time-entries/me` | Lista własnych wpisów | dowolny zalogowany |
+| `GET /api/time-entries/me/by-project` | Własny czas pracy zsumowany per projekt (tylko zamknięte wpisy) | dowolny zalogowany |
 
 ```jsonc
 // POST /api/time-entries/clock-in
-// -> 201 { "id": 1, "userId": 5, "clockIn": "...", "clockOut": null, "breakMinutes": 0, "totalMinutes": null }
+{ "projectId": 3 }   // ciało opcjonalne — brak body lub projectId:null = wpis bez projektu
+// -> 201 { "id": 1, "userId": 5, "clockIn": "...", "clockOut": null, "breakMinutes": 0,
+//          "totalMinutes": null, "projectId": 3 }
+// -> 404 gdy projectId nie istnieje
 
 // POST /api/time-entries/clock-out
 // -> 200 { ..., "clockOut": "...", "totalMinutes": 480 }
+
+// GET /api/time-entries/me/by-project
+// -> 200 [ { "projectId": 3, "projectName": "Kalendario", "totalMinutes": 960, "entryCount": 2 } ]
 ```
 
 Błędy mapowane przez dedykowany `api.timetracking.TimeTrackingExceptionHandler`
 (analogicznie do modułu Leave — każdy moduł ma własny handler, żeby uniknąć
-współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułami).
+współdzielenia jednego dużego pliku między niezależnie rozwijanymi modułami);
+`ProjectNotFoundException` z clock-in jest jednak mapowany przez
+`api.project.ProjectExceptionHandler` (jeden `@RestControllerAdvice` obsługuje
+dany wyjątek niezależnie od tego, który kontroler go rzucił).
 
 ## Moduł: Profil użytkownika
 
@@ -372,16 +429,51 @@ Konfiguracja produkcyjna (env): `MAIL_ENABLED=true`, `MAIL_HOST`, `MAIL_PORT`,
 żadne środowisko (w tym dev/test) nie wysyłało maili przez przypadek, dopóki
 ktoś świadomie nie skonfiguruje SMTP w produkcji.
 
+## Moduł: Projekty
+
+Tabela `projects` (id, `name` unique, `description`, `createdAt`). Projekty są
+lekkim, płaskim słownikiem — bez statusu aktywny/nieaktywny czy hierarchii na
+tym etapie (celowo odłożone, podobnie jak `LeaveBalance`). Każdy `TimeEntry`
+może być opcjonalnie przypisany do projektu (`projectId`, nullable) —
+przypisanie weryfikowane przy clock-in (patrz
+[Moduł: Time Tracking](#moduł-time-tracking-czas-pracy)).
+
+| Endpoint | Opis | Uprawnienia |
+|---|---|---|
+| `POST /api/projects` | Tworzy projekt (nazwa musi być unikalna) | `HR` / `ADMIN` |
+| `GET /api/projects` | Lista wszystkich projektów, alfabetycznie | dowolny zalogowany (żeby wybrać projekt przy clock-in) |
+| `GET /api/projects/{id}/summary` | Zbiorczy czas pracy **wszystkich** pracowników nad projektem (tylko zamknięte wpisy) | `MANAGER` / `HR` / `ADMIN` |
+
+```jsonc
+// POST /api/projects (wymaga HR lub ADMIN)
+{ "name": "Kalendario", "description": "Aplikacja HR" }
+// -> 201 { "id": 1, "name": "Kalendario", "description": "Aplikacja HR", "createdAt": "..." }
+// -> 409 gdy nazwa już istnieje  |  403 gdy wywołujący nie jest HR/ADMIN
+
+// GET /api/projects/1/summary
+// -> 200 { "projectId": 1, "projectName": "Kalendario", "totalMinutes": 960, "entryCount": 2 }
+// -> 403 gdy wywołujący jest zwykłym EMPLOYEE  |  404 gdy projekt nie istnieje
+```
+
+Rozróżnienie uprawnień: tworzenie projektu to zmiana struktury organizacyjnej
+(`HR`/`ADMIN`, tak jak dane organizacyjne użytkownika), natomiast wgląd w
+zbiorczy czas pracy nad projektem to też coś, czego potrzebuje `MANAGER` do
+oceny obciążenia swojego zespołu — stąd szerszy dostęp do `/summary` niż do
+tworzenia. Osobisty rozkład czasu per projekt (`GET /api/time-entries/me/by-project`)
+jest dostępny dla każdego, bo dotyczy tylko własnych danych.
+
+Błędy mapowane przez dedykowany `api.project.ProjectExceptionHandler`.
+
 ## Testy
 
 | Warstwa | Typ testu | Przykład |
 |---|---|---|
-| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest`, `NotificationTest` |
-| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `GetMyProfileUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest` |
-| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest`, `NotificationRepositoryAdapterTest` |
+| `domain` | Unit (czysty Java, bez Springa) | `LeaveRequestTest`, `TimeEntryTest`, `UserTest`, `NotificationTest`, `ProjectTest`, `AnnualLeaveLimitPolicyTest` |
+| `application` | Unit (Mockito, porty mockowane) | `RegisterUserUseCaseTest`, `CreateLeaveRequestUseCaseTest`, `ClockInUseCaseTest`, `ListRecentLeaveActivityUseCaseTest`, `ListPendingLeaveRequestsUseCaseTest`, `GetAnnualLeaveSummaryUseCaseTest`, `GetMyProfileUseCaseTest`, `UpdateUserOrganizationUseCaseTest`, `UpdateMyPersonalInfoUseCaseTest`, `ListMyNotificationsUseCaseTest`, `MarkNotificationAsReadUseCaseTest`, `LeaveDecisionNotifierTest`, `CreateProjectUseCaseTest`, `ListProjectsUseCaseTest`, `GetProjectTimeSummaryUseCaseTest`, `ListMyTimeByProjectUseCaseTest` |
+| `infrastructure.persistence` | `@DataJpaTest` (H2) | `UserRepositoryAdapterTest`, `LeaveRequestRepositoryAdapterTest`, `TimeEntryRepositoryAdapterTest`, `NotificationRepositoryAdapterTest`, `ProjectRepositoryAdapterTest` |
 | `infrastructure.security` | Unit (bez Springa) | `JwtTokenProviderTest` |
 | `infrastructure.email` | Unit (bez Springa) | `LoggingEmailSenderTest` |
-| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest`, `NotificationControllerTest` |
+| `api` | `@SpringBootTest` + MockMvc (pełny kontekst) | `AuthControllerTest`, `LeaveRequestControllerTest`, `TimeEntryControllerTest`, `UserControllerTest`, `NotificationControllerTest`, `ProjectControllerTest` |
 
 Uwaga: e-maile testowe w każdej klasie `@SpringBootTest` muszą być unikalne w
 całym module — Spring cache'uje kontekst (i bazę H2) między klasami testów o
@@ -389,7 +481,7 @@ identycznej konfiguracji, więc powtórzony e-mail w dwóch klasach kończy się
 kolizją unikalności (409) zamiast izolacji.
 
 Uwaga testowa: rejestracja (`/api/auth/register`) zawsze tworzy użytkownika z
-rolą `EMPLOYEE`. Żeby przetestować ścieżki wymagające `MANAGER`/`HR_ADMIN`,
+rolą `EMPLOYEE`. Żeby przetestować ścieżki wymagające `MANAGER`/`HR`/`ADMIN`,
 testy integracyjne zapisują użytkownika bezpośrednio przez `UserRepository`
 (`User.reconstitute(...)`) i generują token przez `TokenProvider` — z
 pominięciem endpointu rejestracji.
@@ -404,8 +496,11 @@ pominięciem endpointu rejestracji.
 | Role EMPLOYEE / MANAGER / HR / ADMIN | ✅ |
 | Leave requests (w tym praca z domu, urlop na żądanie, okolicznościowy, opieka nad dzieckiem bezpłatna, odbiór za święto, delegacja) | ✅ |
 | Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy | ✅ |
+| Roczny limit urlopu wypoczynkowego (26 dni, VACATION+ON_DEMAND) | ✅ |
+| Roczne podsumowanie: praca zdalna vs pozostałe nieobecności (`/api/leave-requests/me/annual-summary`) | ✅ |
 | Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ |
 | Time tracking | ✅ |
+| Projekty + rejestrowanie czasu w projekcie + podsumowania (własne i zbiorcze) | ✅ |
 | Profil użytkownika — dane organizacyjne (stanowisko, dział, zakład, przełożony) | ✅ |
 | Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ |
 | Powiadomienia w aplikacji o decyzji na wniosku | ✅ |

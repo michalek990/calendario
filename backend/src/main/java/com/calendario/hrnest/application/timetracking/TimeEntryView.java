@@ -10,7 +10,8 @@ public record TimeEntryView(
         Instant clockOut,
         int breakMinutes,
         Long totalMinutes,
-        String notes
+        String notes,
+        Long projectId
 ) {
 
     public static TimeEntryView from(TimeEntry timeEntry) {
@@ -21,6 +22,7 @@ public record TimeEntryView(
                 timeEntry.getClockOut(),
                 timeEntry.getBreakMinutes(),
                 timeEntry.totalMinutes(),
-                timeEntry.getNotes());
+                timeEntry.getNotes(),
+                timeEntry.getProjectId());
     }
 }

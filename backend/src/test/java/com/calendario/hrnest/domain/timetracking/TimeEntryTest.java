@@ -15,6 +15,14 @@ class TimeEntryTest {
         assertThat(entry.isOpen()).isTrue();
         assertThat(entry.getClockOut()).isNull();
         assertThat(entry.totalMinutes()).isNull();
+        assertThat(entry.getProjectId()).isNull();
+    }
+
+    @Test
+    void clockIn_withProjectId_assignsProject() {
+        TimeEntry entry = TimeEntry.clockIn(1L, 5L);
+
+        assertThat(entry.getProjectId()).isEqualTo(5L);
     }
 
     @Test

@@ -32,6 +32,13 @@ public class TimeEntryRepositoryAdapter implements TimeEntryRepository {
                 .toList();
     }
 
+    @Override
+    public List<TimeEntry> findByProjectId(Long projectId) {
+        return springDataTimeEntryRepository.findByProjectId(projectId).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private TimeEntryJpaEntity toEntity(TimeEntry timeEntry) {
         TimeEntryJpaEntity entity = new TimeEntryJpaEntity();
         entity.setId(timeEntry.getId());
@@ -40,6 +47,7 @@ public class TimeEntryRepositoryAdapter implements TimeEntryRepository {
         entity.setClockOut(timeEntry.getClockOut());
         entity.setBreakMinutes(timeEntry.getBreakMinutes());
         entity.setNotes(timeEntry.getNotes());
+        entity.setProjectId(timeEntry.getProjectId());
         return entity;
     }
 
@@ -50,6 +58,7 @@ public class TimeEntryRepositoryAdapter implements TimeEntryRepository {
                 entity.getClockIn(),
                 entity.getClockOut(),
                 entity.getBreakMinutes(),
-                entity.getNotes());
+                entity.getNotes(),
+                entity.getProjectId());
     }
 }

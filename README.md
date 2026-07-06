@@ -1,6 +1,6 @@
 # Calendario — HR Management System
 
-Aplikacja typu HRnest: zarządzanie personelem, wnioskami urlopowymi i raportowaniem czasu pracy.
+Aplikacja typu HRnest: zarządzanie personelem, wnioskami urlopowymi, projektami i raportowaniem czasu pracy.
 
 ## Stack
 
@@ -26,9 +26,11 @@ Calendario/
 | Profil użytkownika — dane personalne (data urodzenia, telefon, awatar, ostatnie logowanie) | ✅ | — (na razie tylko API) |
 | Leave (wnioski urlopowe: wypoczynkowy, na żądanie, chorobowy, bezpłatny, opieka nad dzieckiem bezpłatna, okolicznościowy, praca z domu, odbiór za święto, delegacja) | ✅ | ✅ (wyśrodkowany formularz nowego wniosku, lista własnych, zatwierdź/odrzuć dla MANAGER/HR/ADMIN, widoczne na kalendarzu pulpitu — nowe typy wniosków wymagają dodania ich do frontendu) |
 | Zatwierdzanie wniosków — MANAGER tylko bezpośredni podwładni, HR/ADMIN każdy pracownik | ✅ | ✅ (frontend woła te same endpointy, backend teraz dodatkowo weryfikuje zakres) |
+| Roczny limit urlopu wypoczynkowego (26 dni) i roczne podsumowanie (praca zdalna vs pozostałe) | ✅ | — (na razie tylko API) |
 | Ostatnie zmiany na wnioskach (`/api/leave-requests/me/recent-activity`) | ✅ | — (na razie tylko API) |
 | Powiadomienia w aplikacji i mailem o decyzji na wniosku | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-powiadomienia)) |
-| Time Tracking (czas pracy) | ✅ | ✅ (wyśrodkowana karta rozpocznij/zakończ pracę, lista własnych wpisów, widoczne na kalendarzu pulpitu) |
+| Time Tracking (czas pracy) | ✅ | ✅ (wyśrodkowana karta rozpocznij/zakończ pracę, lista własnych wpisów, widoczne na kalendarzu pulpitu — bez UI do wyboru projektu) |
+| Projekty + rejestrowanie czasu w projekcie + podsumowania | ✅ | — (na razie tylko API, patrz [backend/README.md](backend/README.md#moduł-projekty)) |
 | Ustawienia wyglądu (dark mode, czcionka, kolor wiodący) | — | ✅ (czysto frontendowe, `localStorage`) |
 
 Nawigacja frontendu w domyślnej kolorystyce jasny niebieski/biel/żółty,

@@ -1,8 +1,10 @@
 package com.calendario.hrnest.api.leave;
 
+import com.calendario.hrnest.application.leave.AnnualLeaveSummaryView;
 import com.calendario.hrnest.application.leave.ApproveLeaveRequestUseCase;
 import com.calendario.hrnest.application.leave.CreateLeaveRequestCommand;
 import com.calendario.hrnest.application.leave.CreateLeaveRequestUseCase;
+import com.calendario.hrnest.application.leave.GetAnnualLeaveSummaryUseCase;
 import com.calendario.hrnest.application.leave.LeaveRequestView;
 import com.calendario.hrnest.application.leave.ListMyLeaveRequestsUseCase;
 import com.calendario.hrnest.application.leave.ListPendingLeaveRequestsUseCase;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -30,6 +33,7 @@ public class LeaveRequestController {
     private final ListMyLeaveRequestsUseCase listMyLeaveRequestsUseCase;
     private final ListPendingLeaveRequestsUseCase listPendingLeaveRequestsUseCase;
     private final ListRecentLeaveActivityUseCase listRecentLeaveActivityUseCase;
+    private final GetAnnualLeaveSummaryUseCase getAnnualLeaveSummaryUseCase;
 
     public LeaveRequestController(
             CreateLeaveRequestUseCase createLeaveRequestUseCase,
@@ -37,13 +41,15 @@ public class LeaveRequestController {
             RejectLeaveRequestUseCase rejectLeaveRequestUseCase,
             ListMyLeaveRequestsUseCase listMyLeaveRequestsUseCase,
             ListPendingLeaveRequestsUseCase listPendingLeaveRequestsUseCase,
-            ListRecentLeaveActivityUseCase listRecentLeaveActivityUseCase) {
+            ListRecentLeaveActivityUseCase listRecentLeaveActivityUseCase,
+            GetAnnualLeaveSummaryUseCase getAnnualLeaveSummaryUseCase) {
         this.createLeaveRequestUseCase = createLeaveRequestUseCase;
         this.approveLeaveRequestUseCase = approveLeaveRequestUseCase;
         this.rejectLeaveRequestUseCase = rejectLeaveRequestUseCase;
         this.listMyLeaveRequestsUseCase = listMyLeaveRequestsUseCase;
         this.listPendingLeaveRequestsUseCase = listPendingLeaveRequestsUseCase;
         this.listRecentLeaveActivityUseCase = listRecentLeaveActivityUseCase;
+        this.getAnnualLeaveSummaryUseCase = getAnnualLeaveSummaryUseCase;
     }
 
     @PostMapping
@@ -66,6 +72,11 @@ public class LeaveRequestController {
     @GetMapping("/me/recent-activity")
     public ResponseEntity<List<LeaveRequestView>> recentActivity() {
         return ResponseEntity.ok(listRecentLeaveActivityUseCase.execute());
+    }
+
+    @GetMapping("/me/annual-summary")
+    public ResponseEntity<AnnualLeaveSummaryView> myAnnualSummary(@RequestParam(required = false) Integer year) {
+        return ResponseEntity.ok(getAnnualLeaveSummaryUseCase.execute(year));
     }
 
     @PatchMapping("/{id}/approve")
